@@ -1,0 +1,32 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: apt-get update && apt-get install -y python3-vcstool python3-colcon-common-extensions git
+      - name: Import pinned dependencies
+        run: vcs import ros2_ws/src < deps.repos
+      - name: Install package dependencies
+        run: |
+          rosdep update
+          rosdep install --from-paths ros2_ws/src --ignore-src -y --rosdistro jazzy
+      - name: Build
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws && colcon build --event-handlers console_direct+
+      - name: Test
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws && colcon test && colcon test-result --verbose
+        
