@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# @name Gazebo 5-inch quad, phase 1 sensors (360 lidar + downward flow, no GPS)
+#
+# @type Quadrotor
+#
+
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=fiveinch_lidar_flow}
+
+. ${R}etc/init.d-posix/airframes/22050_gz_fiveinch
+
+echo "Phase 1: no GPS, flow-only position hold"
+param set-default SYS_HAS_GPS 0
+param set-default SIM_GPS_USED 0
+param set-default EKF2_GPS_CTRL 0
+
+# Collision Prevention (Position mode only): stop 1 m from obstacles
+param set-default CP_DIST 1.0
+param set-default MPC_POS_MODE 4
+
+# LD19 sees 12 m at 10 Hz, so keep autonomous speed low
+param set-default MPC_XY_VEL_MAX 3.0
