@@ -1,0 +1,10 @@
+{
+  "name": "drone-dev",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "ubuntu",
+  "runArgs": ["--network=host", "--ipc=host"],
+  "containerEnv": { "DISPLAY": "${localEnv:DISPLAY}" },
+  "mounts": ["source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"],
+  "postCreateCommand": "vcs import ros2_ws/src < deps.repos",
+  "customizations": { "vscode": { "extensions": ["ms-python.python", "ms-vscode.cpptools"] } }
+}
