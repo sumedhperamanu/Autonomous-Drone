@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='ubuntu',
+    maintainer='Sumedh Peramanu',
     maintainer_email='sumedh.peramanu@gmail.com',
-    description='TODO: Package description',
-    license='Apache-2.0',
+    description='Launch files and config that start the drone software stack',
+    license='APACHE-2.0',
     extras_require={
         'test': [
             'pytest',
