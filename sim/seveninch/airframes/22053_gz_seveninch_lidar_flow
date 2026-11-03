@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# @name Gazebo 7-inch quad on 4S, phase 1 sensors (360 lidar + downward flow, no GPS)
+#
+# @type Quadrotor
+#
+# The build the team plans to buy: 4S motors (same numbers as 22054) plus the phase 1 sensors.
+
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=seveninch_lidar_flow}
+
+. ${R}etc/init.d-posix/airframes/22052_gz_seveninch
+
+# 4S motors, same as 22054_gz_seveninch_4s
+param set-default SIM_GZ_EC_MIN1 295
+param set-default SIM_GZ_EC_MIN2 295
+param set-default SIM_GZ_EC_MIN3 295
+param set-default SIM_GZ_EC_MIN4 295
+param set-default SIM_GZ_EC_MAX1 1964
+param set-default SIM_GZ_EC_MAX2 1964
+param set-default SIM_GZ_EC_MAX3 1964
+param set-default SIM_GZ_EC_MAX4 1964
+param set-default MPC_THR_HOVER 0.39
+
+echo "Phase 1: no GPS, flow-only position hold"
+param set-default SYS_HAS_GPS 0
+param set-default SIM_GPS_USED 0
+param set-default EKF2_GPS_CTRL 0
+
+# Collision Prevention (Position mode only): stop 1 m from obstacles
+param set-default CP_DIST 1.0
+param set-default MPC_POS_MODE 4
+
+# P3's perception requirements (docs/PERCEPTION_REQUIREMENTS.md): v_max 1.5 m/s,
+# braking 2 m/s^2, so the drone can stop inside what the sensors see
+param set-default MPC_XY_VEL_MAX 1.5
+param set-default MPC_XY_CRUISE 1.0
+param set-default MPC_VEL_MANUAL 1.5
+param set-default MPC_ACC_HOR 2.0
