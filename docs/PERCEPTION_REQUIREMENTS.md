@@ -21,10 +21,16 @@ Owners: Perception & Sensing (Alex, Amartya). Day 1 deliverable (P3): mission tu
 | P-6 | Rate and latency | Depth ≥ 15 Hz, frame-to-command ≤ 150 ms | t_r ≈ 1/15 + 0.15 + control ≈ 0.3 s | `ros2 topic hz`, timestamps |
 | P-7 | Height and hold | a. Rangefinder 0.1–4 m at ≥ 20 Hz<br>b. Optical flow ≥ 20 Hz<br>c. Hover ≥ 0.3 m<br>d. Textured floor | a. h_max + 1 m = 3 + 1 = 4 m<br>c. Flow footprint w = 2h·tan 35° ≈ 0.42 m at 0.3 m | a. Rangefinder vs truth<br>b. 60 s hover drift |
 | P-9 | Lighting | ≥ 200 lux, no direct sun, exposure ≤ 6 ms; global shutter + active stereo preferred | Motion blur b = f·v·t_exp/Z ≤ 3 px → t_exp ≈ 6.6 ms | Lighting variation tests |
-| P-10 | Sensor budget | ≤ 120 g, ≤ 5 W (excluding companion computer) | 950 g AUW | Mass budget |
+| P-10 | Sensor budget | ≤ 120 g, ≤ 5 W (peak <= 5.5 W), regulator sized with at least 2x headroom (excluding companion computer) | 950 g AUW | Mass budget |
 | P-11 | Fault flags | a. Depth older than 0.5 s → hover<br>b. Flow/rangefinder invalid → land | Safety: v·0.5 s + d_stop = 2.26 m < 3 m | Inject dropout in sim |
+| P-12 | Flying room | Walls: posters, printed patterns or coloured tape at camera height; busy and high-contrast, not repeating. Floor: textured, with a mat or tape if plain. Lighting per P-9. | SLAM and stereo need real features; optical flow needs floor texture | Check the room before flying |
 
-P-8 (AprilTag) was removed. The other IDs keep their numbers.
+**NOTES**
+- P-8 (AprilTag) was removed. The other IDs keep their numbers
+- Check the regulator: P1’s pick is a 5 A BEC for the Pi. If the camera is powered through the Pi, that BEC also has to cover the Pi’s own draw
+- Measure it: when the camera arrives, check the real draw with a USB power meter
+- If SLAM tracking lost then hold on flow and rangefinder, then land
+
 
 ## What must be detected, per mission phase
 
