@@ -19,12 +19,13 @@ done
 
 QGC_IP=${QGC_IP:-$(getent ahostsv4 host.docker.internal 2>/dev/null | awk 'NR==1 {print $1}')}
 ROOTFS=$PX4/build/px4_sitl_default/rootfs
-if [ -n "$QGC_IP" ] && [ "$QGC_IP" != "none" ] && [ -d "$ROOTFS" ]; then
+if [ -n "$QGC_IP" ] && [ "$QGC_IP" != "none" ]; then
   # Wait in the background until PX4 is up, then add a MAVLink link to QGC (UDP 14550).
+  # On the very first run PX4 hasn't been built yet, so this also waits for the build (up to 1 hour).
   (
-    cd "$ROOTFS"
-    for _ in $(seq 1 300); do
-      if ../bin/px4-commander status >/dev/null 2>&1; then
+    for _ in $(seq 1 1800); do
+      if [ -x "$ROOTFS/../bin/px4-commander" ] && (cd "$ROOTFS" && ../bin/px4-commander status >/dev/null 2>&1); then
+        cd "$ROOTFS"
         sleep 3
         ../bin/px4-mavlink start -u 14561 -o 14550 -t "$QGC_IP" -r 4000000 >/dev/null 2>&1 \
           && echo "QGroundControl link: sending to $QGC_IP port 14550"

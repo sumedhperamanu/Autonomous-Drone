@@ -1,7 +1,7 @@
-# REAL DRONE first-flight file: 7" (4S 5000 mAh). MicoAir743 V2 + MicoAir 55A AM32. PX4 v1.17, 2026-11-03.
+# REAL DRONE first-flight file: 7" (4S 5000 mAh). MicoAir743 V2 + MicoAir 55A AM32. PX4 v1.17, 2026-11-04.
 # This board keeps its parameters on the microSD card. Never fly without the card.
 # Vehicle-Id Component-Id Name Value Type
-# Ports (see the port map in the P1 doc)
+# Ports (port map: params/README.md)
 # MAV_0_CONFIG: board default puts MAVLink on TELEM1, which would clash with ROS 2 on TELEM1
 1	1	MAV_0_CONFIG	0	6
 # UXRCE_DDS_CFG: ROS 2 link to the Pi on TELEM1
@@ -66,14 +66,18 @@
 1	1	BAT_CRIT_THR	0.15	9
 # BAT_EMERGEN_THR: emergency (Land) at 7%
 1	1	BAT_EMERGEN_THR	0.07	9
-# COM_OF_LOSS_T: offboard setpoints older than 0.5 s count as lost (P3's P-11a, 0.5 s)
+# COM_OF_LOSS_T: offboard link timeout: no setpoints from the ROS 2 node for 0.5 s counts as offboard lost (PX4 default 1 s).
+#   This is NOT P3's P-11a (depth older than 0.5 s -> hover). PX4 never sees the depth data, so if the node keeps
+#   sending while depth is stale, PX4 can't tell. P-11a has to live in P2's offboard node
 1	1	COM_OF_LOSS_T	0.5	9
 # COM_OBL_RC_ACT: offboard lost -> Land. In offboard, a lost position estimate also counts as offboard lost
-#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b);
-#   with no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch
+#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b),
+#   but only while the node sends position or velocity setpoints: offboardCheck.cpp only checks the estimate that
+#   setpoint type needs. With attitude or rate setpoints a flow loss is not caught here.
+#   With no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch
 1	1	COM_OBL_RC_ACT	4	6
 # EKF2_NOAID_TOUT: flow drone: declare position lost after 1 s without flow, not 5 s (in microseconds)
 1	1	EKF2_NOAID_TOUT	1000000	6
-# NAV_DLL_ACT: Wi-Fi to QGC drops often; the RC link is the safety link
+# NAV_DLL_ACT: ground-station link lost: do nothing. Wi-Fi to QGC drops often indoors; the RC link is the safety link
 1	1	NAV_DLL_ACT	0	6
 # COM_POS_FS_EPH (default 5 m) is left alone until the Day 10 flow-loss test: 1 m may trip on normal flow drift.

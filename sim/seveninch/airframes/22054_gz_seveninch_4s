@@ -23,3 +23,5 @@ param set-default SIM_GZ_EC_MAX3 1964
 param set-default SIM_GZ_EC_MAX4 1964
 # Hover output measured in sim: 0.386
 param set-default MPC_THR_HOVER 0.39
+# Rate gains (MC_ROLLRATE_K, MC_PITCHRATE_K 0.5) come from 22052's 6S sweep. In the 4S sweep the hover
+# never shook, even at K 1.0, so 0.5 is on the careful side here.

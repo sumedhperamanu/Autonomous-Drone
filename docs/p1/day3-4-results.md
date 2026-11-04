@@ -147,7 +147,7 @@ Failsafes in both:
 | RC link lost | Return (`NAV_RCL_ACT 2`). No GPS, so PX4 lands where it is |
 | Battery critical (15%) | Return (`COM_LOW_BAT_ACT 3`), so also lands. Warning at 25%, emergency land at 7% |
 | Return height | 2.5 m, descend to 2.0 m (the defaults are 60 m and 30 m) |
-| ROS 2 stops sending for 0.5 s | Land (`COM_OBL_RC_ACT 4`). In offboard, losing the position estimate counts as this too |
+| ROS 2 stops sending for 0.5 s | Land (`COM_OBL_RC_ACT 4`). In offboard, losing the position estimate counts as this too, but only while the node sends position or velocity setpoints |
 | Flow sensor stops | Position counted as lost after 1 s (`EKF2_NOAID_TOUT`) instead of 5 s |
 | Wi-Fi to QGC drops | Nothing (`NAV_DLL_ACT 0`). The RC link is the safety link |
 
@@ -160,6 +160,15 @@ Failsafes in both:
 - Real-drone file now sets the barometer as the height source (`EKF2_HGT_REF 0`) and turns GPS off. PX4 defaults to
   GPS for height, which this build doesn't have.
 - TELEM1 clash: the board puts MAVLink on TELEM1 by default, where ROS 2 goes. `MAV_0_CONFIG 0` turns it off.
+- From Sumedh's review (Nov 4):
+  - `sim/calc/gen7.py` didn't rebuild the committed 7" models. It now sets every 7" number by name, and running it
+    gives exactly the files in `sim/seveninch/models` (check command in `sim/seveninch/README.md`).
+  - The sensor airframes (22051, 22053) now use the barometer for height, same as the real drone.
+  - `params/README.md` has a port map, and the `NAV_DLL_ACT` notes no longer contradict each other.
+  - `step_tests.py` checks that PX4 accepted each parameter, the mode change and the arm before it starts a test.
+    Not re-run in sim yet.
+  - `sweep.sh` and `final_batch.sh` clear their output file first, so old runs don't mix in.
+  - 4S gain comments: the 0.5 rate gain came from the 6S sweep. The 4S drone never shook, even at 1.0.
 
 ## Not done yet
 
@@ -170,4 +179,8 @@ Failsafes in both:
 - Failsafes in sim: drain the battery with `SIM_BAT_DRAIN` and cut the offboard stream.
 - The sim 7" uses 295 mm motor spacing. The TBS frame is 320 mm (rotors at +-0.113 m).
 - Angle gains (`MC_ROLL_P`, `MC_PITCH_P`) are still PX4 defaults. That's Day 5.
+- P3's P-11a (depth data older than 0.5 s -> hover) can't be set in PX4. `COM_OF_LOSS_T` only watches the setpoint
+  stream, not the depth camera. It has to go in P2's offboard node, and P1 and P3 still need to agree on hover vs land.
+- The sim inertia was worked out with the 6S 4000 pack. The 4S 5000 pack is about 5% more on roll and yaw. Update it
+  together with the 320 mm spacing.
 - Position hold in gusts: tune `MPC_XY_P` / `MPC_XY_VEL_*` with `sim/wind.py`, then retest on flow instead of GPS.

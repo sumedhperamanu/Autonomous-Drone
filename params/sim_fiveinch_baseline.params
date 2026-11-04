@@ -1,14 +1,14 @@
-# SIM baseline: 5" (2207 1750KV, 5.1x3x3, 6S 1800). PX4 v1.17, Gazebo Harmonic, 2026-11-03.
+# SIM baseline: 5" sim model (built from the Day 2 eCalc run: 2207 1750KV, 5.1x3x3, 6S 1800. The Nov 3 4S 2700 eCalc run gave similar thrust and hover, so the model was kept). PX4 v1.17, Gazebo Harmonic, 2026-11-04.
 # Load on top of the airframe defaults. Lines starting with # are notes and QGC skips them.
 # Vehicle-Id Component-Id Name Value Type
 # Rate gains from the Day 4 gain sweep (step_tests.py + analyze_steps.py)
-# MC_ROLLRATE_K: about half the gain where hover started to shake in sim
+# MC_ROLLRATE_K: about half the gain where hover started to shake in sim (smooth at 0.7, shook at 0.85)
 1	1	MC_ROLLRATE_K	0.4	9
 # MC_PITCHRATE_K: same as roll; checked with the pitch step
 1	1	MC_PITCHRATE_K	0.4	9
 # MPC_THR_HOVER: the hover thrust PX4 learned in sim (hover_thrust_estimate)
 1	1	MPC_THR_HOVER	0.35	9
-# NAV_DLL_ACT: SIM ONLY: no ground station needed
+# NAV_DLL_ACT: ground-station link lost: do nothing. Same in the real-drone file: the RC link is the safety link, not Wi-Fi
 1	1	NAV_DLL_ACT	0	6
 # Motion limits from P3's perception requirements (docs/PERCEPTION_REQUIREMENTS.md)
 # MPC_XY_VEL_MAX: v_max 1.5 m/s
@@ -36,11 +36,15 @@
 1	1	BAT_CRIT_THR	0.15	9
 # BAT_EMERGEN_THR: emergency (Land) at 7%
 1	1	BAT_EMERGEN_THR	0.07	9
-# COM_OF_LOSS_T: offboard setpoints older than 0.5 s count as lost (P3's P-11a, 0.5 s)
+# COM_OF_LOSS_T: offboard link timeout: no setpoints from the ROS 2 node for 0.5 s counts as offboard lost (PX4 default 1 s).
+#   This is NOT P3's P-11a (depth older than 0.5 s -> hover). PX4 never sees the depth data, so if the node keeps
+#   sending while depth is stale, PX4 can't tell. P-11a has to live in P2's offboard node
 1	1	COM_OF_LOSS_T	0.5	9
 # COM_OBL_RC_ACT: offboard lost -> Land. In offboard, a lost position estimate also counts as offboard lost
-#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b);
-#   with no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch
+#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b),
+#   but only while the node sends position or velocity setpoints: offboardCheck.cpp only checks the estimate that
+#   setpoint type needs. With attitude or rate setpoints a flow loss is not caught here.
+#   With no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch
 1	1	COM_OBL_RC_ACT	4	6
 # EKF2_NOAID_TOUT: flow drone: declare position lost after 1 s without flow, not 5 s (in microseconds)
 1	1	EKF2_NOAID_TOUT	1000000	6

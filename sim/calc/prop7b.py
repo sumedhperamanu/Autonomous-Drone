@@ -21,6 +21,10 @@ def res(p):
         rp,Ib,T,_=motor(d,24,Kv,R,1.5,Ct,Cp,r0,D7)
         out += [(rp-rpm)/rpm,(Ib-I)/I,(T*1000/9.81-g)/g]
     return out
+# KV ends up on the 1400 upper bound. Checked Nov 4: with the bound raised to 2000 the fit settles at 1419 KV,
+# Ct and Cp move under 2% and the fit error barely changes (6.3% -> 6.2% worst point). So the bound isn't what
+# makes the model's hover time 19% long; the assumed two-blade ratios in seven.py are the likelier cause.
+# Left as is so fit.txt keeps matching the committed models. Quote eCalc for flight time.
 fit=least_squares(res,[1250,0.06,0.16,0.074],bounds=([900,0.02,0.1,0.03],[1400,0.3,0.25,0.12]))
 Kv,R,Ct3,Cp3=fit.x
 print(f"fit Kv_eff={Kv:.0f} R_eff={R*1000:.0f} mOhm Ct3={Ct3:.3f} Cp3={Cp3:.4f}")

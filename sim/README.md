@@ -18,14 +18,14 @@ Results and how I got them: `docs/p1/day3-4-results.md`.
 
 You need Docker and WSL Ubuntu (or just Ubuntu). Do these in the Ubuntu terminal.
 
-1. Get the branch:
+1. Get the repo:
 
    ```bash
-   git clone -b sim-5-in-7-in https://github.com/sumedhperamanu/Autonomous-Drone.git ~/Autonomous-Drone
+   git clone https://github.com/sumedhperamanu/Autonomous-Drone.git ~/Autonomous-Drone
    cd ~/Autonomous-Drone
    ```
 
-   If you already have the repo: `git fetch origin && git checkout sim-5-in-7-in`.
+   If you already have the repo: `git checkout main && git pull`.
    Clone it inside WSL, not in a Windows folder, or the scripts get Windows line endings.
 
 2. Build the team image. This is P2's dev container and takes a while the first time (30+ min):

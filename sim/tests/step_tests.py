@@ -7,7 +7,7 @@ Then analyse the newest log: python3 sim/tests/analyze_steps.py <log.ulg>
 Why offboard: it gives the exact same, repeatable step every run, so the 5" and 7"
 (or two tuning runs) compare fairly. Hand-flying a step in QGC is never the same twice.
 """
-import argparse, math, time
+import argparse, math, struct, sys, time
 from pymavlink import mavutil
 
 p = argparse.ArgumentParser()
@@ -44,18 +44,68 @@ def cmd(c, *params):
     params = list(params) + [0] * (7 - len(params))
     m.mav.command_long_send(m.target_system, m.target_component, c, 0, *params)
 
+def param_reply(name, timeout=5):
+    """Wait for the PARAM_VALUE that answers for this parameter (other params can arrive in between)."""
+    end = time.time() + timeout
+    while time.time() < end:
+        msg = m.recv_match(type='PARAM_VALUE', blocking=True, timeout=max(end - time.time(), 0.01))
+        if msg and msg.param_id.rstrip('\x00') == name:
+            return msg
+    return None
+
+def decode(msg):
+    # PX4 sends integer parameters bytewise: the int's 4 bytes sit in the float field
+    if msg.param_type == M.MAV_PARAM_TYPE_INT32:
+        return struct.unpack('<i', struct.pack('<f', msg.param_value))[0]
+    return msg.param_value
+
 def get_param(name):
     m.mav.param_request_read_send(m.target_system, m.target_component, name.encode(), -1)
-    msg = m.recv_match(type='PARAM_VALUE', blocking=True, timeout=5)
-    return msg.param_value if msg else None
+    msg = param_reply(name)
+    return (decode(msg), msg.param_type) if msg else (None, None)
 
 def set_param(name, value):
-    m.mav.param_set_send(m.target_system, m.target_component, name.encode(), float(value), M.MAV_PARAM_TYPE_REAL32)
-    msg = m.recv_match(type='PARAM_VALUE', blocking=True, timeout=5)
-    print(f'set {name} = {value}' + ('' if msg else '  (no reply!)'))
+    """Set a parameter with its own type (int or float) and check PX4 took it."""
+    _, ptype = get_param(name)
+    if ptype is None:
+        sys.exit(f'{name}: PX4 did not answer, is the name right?')
+    if ptype == M.MAV_PARAM_TYPE_INT32:
+        want = int(float(value))
+        raw = struct.unpack('<f', struct.pack('<i', want))[0]
+    else:
+        want = raw = float(value)
+    m.mav.param_set_send(m.target_system, m.target_component, name.encode(), raw, ptype)
+    msg = param_reply(name)
+    got = decode(msg) if msg else None
+    if got is None or abs(got - want) > 1e-6:
+        sys.exit(f'{name}: tried to set {want}, PX4 reports {got}')
+    print(f'set {name} = {got}')
 
 for kv in a.param:
     n, v = kv.split('='); set_param(n, v)
+
+def wait_ack(command, what, timeout=3):
+    end = time.time() + timeout
+    while time.time() < end:
+        ack = m.recv_match(type='COMMAND_ACK', blocking=True, timeout=max(end - time.time(), 0.01))
+        if ack and ack.command == command:
+            if ack.result != M.MAV_RESULT_ACCEPTED:
+                sys.exit(f'{what} refused by PX4 (result {ack.result}). Check the pxh> window for the reason.')
+            return
+    sys.exit(f'{what}: no answer from PX4')
+
+def wait_state(want_armed, want_offboard, timeout=5):
+    """Check the heartbeat: armed, and PX4 main mode 6 = OFFBOARD."""
+    end = time.time() + timeout
+    while time.time() < end:
+        hb = m.recv_match(type='HEARTBEAT', blocking=True, timeout=1)
+        if not hb or hb.get_srcSystem() != m.target_system:
+            continue
+        armed = bool(hb.base_mode & M.MAV_MODE_FLAG_SAFETY_ARMED)
+        offboard = ((hb.custom_mode >> 16) & 0xFF) == 6
+        if armed == want_armed and offboard == want_offboard:
+            return
+    sys.exit('the drone did not reach offboard + armed. Check the pxh> window')
 
 # ask for the thrust setpoint stream, so the roll step can use the real hover thrust
 m.mav.command_long_send(m.target_system, m.target_component, M.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
@@ -64,8 +114,12 @@ m.mav.command_long_send(m.target_system, m.target_component, M.MAV_CMD_SET_MESSA
 print('streaming setpoints, switching to offboard, arming')
 hold(pos, 1.5, -2.0)
 cmd(M.MAV_CMD_DO_SET_MODE, 1, 6)          # PX4 custom main mode 6 = OFFBOARD
+wait_ack(M.MAV_CMD_DO_SET_MODE, 'switching to offboard')
 hold(pos, 0.5, -2.0)
 cmd(M.MAV_CMD_COMPONENT_ARM_DISARM, 1)
+wait_ack(M.MAV_CMD_COMPONENT_ARM_DISARM, 'arming')
+wait_state(True, True)
+print('armed in offboard')
 print('climb to 2 m and settle (10 s)'); hold(pos, 10, -2.0)
 print('STEP: 2 m -> 3 m (8 s)');          hold(pos, 8, -3.0)
 print('STEP: 3 m -> 2 m (8 s)');          hold(pos, 8, -2.0)

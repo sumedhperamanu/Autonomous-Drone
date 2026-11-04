@@ -13,6 +13,9 @@ echo "Phase 1: no GPS, flow-only position hold"
 param set-default SYS_HAS_GPS 0
 param set-default SIM_GPS_USED 0
 param set-default EKF2_GPS_CTRL 0
+# Height from the barometer, same as the real drone (params/hw_seveninch_first_flight.params).
+# PX4's default height reference is GPS (EKF2_HGT_REF 1), which this drone doesn't have.
+param set-default EKF2_HGT_REF 0
 
 # Collision Prevention (Position mode only): stop 1 m from obstacles
 param set-default CP_DIST 1.0

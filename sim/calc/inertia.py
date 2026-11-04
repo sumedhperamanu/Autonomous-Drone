@@ -27,10 +27,16 @@ def build(arm, motor_g, frame_g, batt_g, batt_dims, arm_len):
 # 5": rotors +-0.078, 33 g motors, 120 g frame, 6S1800 290 g
 p5 = build(0.078, 33, 120, 290, (0.075,0.035,0.040), 0.11)
 M5,cg5,I5 = total(p5, scale_to=0.819)
-# 7": rotors +-0.104, 52 g motors, 160 g frame, 6S4000 600 g
-p7 = build(0.104, 52, 160, 600, (0.155,0.046,0.043), 0.147)
+# 7": rotors +-0.104, 52 g motors, 160 g frame, 4S 5000 mAh about 520 g (the chosen pack)
+p7 = build(0.104, 52, 160, 520, (0.155,0.048,0.035), 0.147)
 M7,cg7,I7 = total(p7, scale_to=1.320-4*0.007)
+# The committed 7" model (0.0040 / 0.0054 / 0.0074) was computed with the earlier 6S 4000 mAh pack (600 g).
+# The 4S pack gives about 5% more roll and yaw inertia and 2% more pitch. Update the model together with the
+# 320 mm frame spacing (rotors at +-0.113 m), then re-fly the step tests.
+p7_6s = build(0.104, 52, 160, 600, (0.155,0.046,0.043), 0.147)
+_, _, I7_6s = total(p7_6s, scale_to=1.320-4*0.007)
 print("5in base_link", M5, np.round(np.diag(I5),5), "Day2 used 0.0016 0.0023 0.0035")
-print("7in base_link", round(M7,3), np.round(np.diag(I7),5))
+print("7in base_link, 4S 5000", round(M7,3), np.round(np.diag(I7),5))
+print("7in base_link, 6S 4000 (what the model uses)", np.round(np.diag(I7_6s),5))
 r = np.diag(I7)/np.diag(I5); print("ratio 7/5", np.round(r,2))
 print("7in scaled from Day2 values:", np.round(np.array([0.0016,0.0023,0.0035])*r,4))

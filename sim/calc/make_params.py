@@ -5,13 +5,13 @@ Two kinds of file, kept apart on purpose (a design-review finding):
       The motion limits and failsafes were NOT loaded in those flights: test them in sim before trusting them.
   hw_<drone>_first_flight.params  the real MicoAir743 V2 drone: ports, battery, failsafes, safe starting gains
 Usage: make_params.py <outdir> <k5> <hover5> <k7> <hover7> <cells7> <capacity7_mAh>
-The Nov 3 files came from:  python3 sim/calc/make_params.py params 0.4 0.35 0.5 0.39 4 5000
+The Nov 4 files came from:  python3 sim/calc/make_params.py params 0.4 0.35 0.5 0.39 4 5000
 """
 import sys, pathlib
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 k5, h5, k7, h7 = map(float, sys.argv[2:6]); cells7, cap7 = int(sys.argv[6]), int(sys.argv[7])
 F, I = 9, 6   # MAV_PARAM_TYPE_REAL32, MAV_PARAM_TYPE_INT32
-DATE = "2026-11-03"
+DATE = "2026-11-04"
 
 motion = [
   ("# Motion limits from P3's perception requirements (docs/PERCEPTION_REQUIREMENTS.md)",),
@@ -31,8 +31,10 @@ failsafes = [
   ("BAT_LOW_THR", 0.25, F, "warning at 25%"),
   ("BAT_CRIT_THR", 0.15, F, "critical (Return) at 15%"),
   ("BAT_EMERGEN_THR", 0.07, F, "emergency (Land) at 7%"),
-  ("COM_OF_LOSS_T", 0.5, F, "offboard setpoints older than 0.5 s count as lost (P3's P-11a, 0.5 s)"),
-  ("COM_OBL_RC_ACT", 4, I, "offboard lost -> Land. In offboard, a lost position estimate also counts as offboard lost\n#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b);\n#   with no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch"),
+  ("COM_OF_LOSS_T", 0.5, F, "offboard link timeout: no setpoints from the ROS 2 node for 0.5 s counts as offboard lost (PX4 default 1 s).\n"
+   "#   This is NOT P3's P-11a (depth older than 0.5 s -> hover). PX4 never sees the depth data, so if the node keeps\n"
+   "#   sending while depth is stale, PX4 can't tell. P-11a has to live in P2's offboard node"),
+  ("COM_OBL_RC_ACT", 4, I, "offboard lost -> Land. In offboard, a lost position estimate also counts as offboard lost\n#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b),\n#   but only while the node sends position or velocity setpoints: offboardCheck.cpp only checks the estimate that\n#   setpoint type needs. With attitude or rate setpoints a flow loss is not caught here.\n#   With no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch"),
   ("EKF2_NOAID_TOUT", 1000000, I, "flow drone: declare position lost after 1 s without flow, not 5 s (in microseconds)"),
 ]
 
@@ -45,16 +47,16 @@ def write(name, rows):
         lines.append(f"1\t1\t{n}\t{v}\t{t}")
     (out / name).write_text("\n".join(lines) + "\n")
 
-def sim(label, k, hover):
+def sim(label, k, hover, gain_note):
     return [
       (f"# SIM baseline: {label}. PX4 v1.17, Gazebo Harmonic, {DATE}.",),
       ("# Load on top of the airframe defaults. Lines starting with # are notes and QGC skips them.",),
       ("# Vehicle-Id Component-Id Name Value Type",),
       ("# Rate gains from the Day 4 gain sweep (step_tests.py + analyze_steps.py)",),
-      ("MC_ROLLRATE_K", k, F, "about half the gain where hover started to shake in sim"),
+      ("MC_ROLLRATE_K", k, F, gain_note),
       ("MC_PITCHRATE_K", k, F, "same as roll; checked with the pitch step"),
       ("MPC_THR_HOVER", hover, F, "the hover thrust PX4 learned in sim (hover_thrust_estimate)"),
-      ("NAV_DLL_ACT", 0, I, "SIM ONLY: no ground station needed"),
+      ("NAV_DLL_ACT", 0, I, "ground-station link lost: do nothing. Same in the real-drone file: the RC link is the safety link, not Wi-Fi"),
     ] + motion + failsafes
 
 def hw(label, cells, cap):
@@ -62,7 +64,7 @@ def hw(label, cells, cap):
       (f"# REAL DRONE first-flight file: {label}. MicoAir743 V2 + MicoAir 55A AM32. PX4 v1.17, {DATE}.",),
       ("# This board keeps its parameters on the microSD card. Never fly without the card.",),
       ("# Vehicle-Id Component-Id Name Value Type",),
-      ("# Ports (see the port map in the P1 doc)",),
+      ("# Ports (port map: params/README.md)",),
       ("MAV_0_CONFIG", 0, I, "board default puts MAVLink on TELEM1, which would clash with ROS 2 on TELEM1"),
       ("UXRCE_DDS_CFG", 101, I, "ROS 2 link to the Pi on TELEM1"),
       ("SER_TEL1_BAUD", 921600, I, "default is 57600, too slow for ROS 2 topics"),
@@ -86,11 +88,15 @@ def hw(label, cells, cap):
       ("MC_ROLLRATE_K", 0.35, F, "board default"),
       ("MC_PITCHRATE_K", 0.4, F, "board default"),
     ] + motion + failsafes + [
-      ("NAV_DLL_ACT", 0, I, "Wi-Fi to QGC drops often; the RC link is the safety link"),
+      ("NAV_DLL_ACT", 0, I, "ground-station link lost: do nothing. Wi-Fi to QGC drops often indoors; the RC link is the safety link"),
       ("# COM_POS_FS_EPH (default 5 m) is left alone until the Day 10 flow-loss test: 1 m may trip on normal flow drift.",),
     ]
 
-write("sim_fiveinch_baseline.params", sim('5" (2207 1750KV, 5.1x3x3, 6S 1800)', k5, h5))
-write("sim_seveninch_baseline.params", sim(f'7" (2807, 7x3.5 two-blade, {cells7}S {cap7})', k7, h7))
+write("sim_fiveinch_baseline.params", sim('5" sim model (built from the Day 2 eCalc run: 2207 1750KV, 5.1x3x3, 6S 1800. '
+    'The Nov 3 4S 2700 eCalc run gave similar thrust and hover, so the model was kept)', k5, h5,
+    "about half the gain where hover started to shake in sim (smooth at 0.7, shook at 0.85)"))
+write("sim_seveninch_baseline.params", sim(f'7" (2807, 7x3.5 two-blade, {cells7}S {cap7})', k7, h7,
+    "taken from the 6S sweep: smooth at 0.85, shook at 1.0, so about half the shake point.\n"
+    "#   The 4S drone never shook in its sweep, even at 1.0, so on 4S this is on the careful side"))
 write("hw_seveninch_first_flight.params", hw(f'7" ({cells7}S {cap7} mAh)', cells7, cap7))
 print("written to", out)
