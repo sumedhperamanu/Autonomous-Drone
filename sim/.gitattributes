@@ -1,3 +1,0 @@
-# Shell scripts and PX4 airframe files break with Windows line endings
-* text=auto eol=lf
-*.png binary
