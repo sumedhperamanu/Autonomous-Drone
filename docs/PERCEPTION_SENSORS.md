@@ -4,7 +4,6 @@
 | :---- | :---- | :---- |
 | Forward depth (P-1 to P-5) | OAK-D Lite, fixed focus | a. passes every hard number b. lightest (61g) c. cheapest (\$376) d. depth computed on the camera  |
 | Downward flow \+ height (P-7) | MicroAir MTF-01 | a. flow \+ 8m rangefinder b. 4.5g c. \$32 d. MAVLink to PX4 |
-| AprilTag camera (P-8) | Waveshare OV9281 USB (A) | a. global shutter b. reads an 18cm tag from \~ 5m c. USB |
 
 **Notes:**
 
@@ -54,35 +53,13 @@
 - H-Flow and ARK Flow need a CAN port on the flight controller  
 - Slim: PX4 has gz\_x500\_lidar\_down for the downward rangefinder
 
-**Downward camera for the AprilTag**
-
-| Check  | Requirement | Waveshare OV9281 USB (A) |
-| :---- | :---- | :---- |
-| Price | assuming \~\$700 total | \$36.32 |
-| Mass | P-10: \<= 120 g total | 18 g |
-| Connection  | works with a computer | USB 2.0 |
-| Shutter | P-9: global | global |
-| FOV | wide helps search | 105o |
-| Frame rate | P-6 | 120 fps at 1280 x 720 |
-| Focal length | used for P-8 | \~ 563 px |
-| Max tag height, 18 cm tag | P-8: \>= 3.75 m | \~ 5.1 m |
-| Floor detection at 0.3 m | P-8: \>= 18 cm tag fits | \~0.68 m |
-| Focus | sharp from 0.3 to 2.5 m | fixed, M12 |
-
-**Notes:**
-
-- focus: the B0411 is fixed at 50 cm and beyon, so the tag may blur in the last 0.3 m of landing; On M12 cameras, set focus near 1 m and test at 0.3 m and 2.5 m	  
-- Wide lenses bend the image; Calibrate the camera before trusting tag process	  
-- Slim: PX4 has gz\_x500\_mono\_cam\_down for a downward camera
-
 **Mass and power budget**
 
 | Item  | Mass (g)  | Power (W) | Power peak (W) | Cost (CAD) |
 | :---- | :---- | :---- | :---- | :---- |
 | OAK-D Lite | 61 | 3.5 | 5 | 376 |
 | MIcroAir MTF-01 | 4.5 | 0.5 | 0.5 | 32 |
-| Waveshare OV9281 USB (A) | 18 | \~ 0.5 | \~ 0.5 | 36 |
 | Mounts \+ cables | \~ 15 | \- | \- | \- |
-| Total | \~ 99 | \~ 4.5 | \~ 6 | 441 |
+| Total | \~ 81 | \~ 4 | \~ 5.5 | 408 |
 | **P-10 limit** | **120** | **5** | **5** | **\-** |
 
