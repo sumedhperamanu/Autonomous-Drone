@@ -211,16 +211,21 @@ something looks wrong, send me the pxh output.
 (`commander takeoff`), then open a second PowerShell window and run one of these:
 
 ```powershell
-docker exec -it drone-sim python3 ~/wind.py typical   # 5 m/s (18 km/h), gusts to about 8 (29 km/h)
-docker exec -it drone-sim python3 ~/wind.py windy     # 9 m/s (32 km/h), gusts to about 15 (54 km/h)
-docker exec -it drone-sim python3 ~/wind.py storm     # 13 m/s (47 km/h), gusts to about 20 (72 km/h)
-docker exec -it drone-sim python3 ~/wind.py 7 12      # your own: mean and gust in m/s
+docker exec -it drone-sim bash -lc "python3 ~/wind.py typical"   # 5 m/s (18 km/h), gusts to about 8 (29 km/h)
+docker exec -it drone-sim bash -lc "python3 ~/wind.py windy"     # 9 m/s (32 km/h), gusts to about 15 (54 km/h)
+docker exec -it drone-sim bash -lc "python3 ~/wind.py storm"     # 13 m/s (47 km/h), gusts to about 20 (72 km/h)
+docker exec -it drone-sim bash -lc "python3 ~/wind.py 7 12"      # your own: mean and gust in m/s
 ```
 
-Ctrl+C stops it. If that window got closed and the wind stayed on, run `python3 ~/wind.py off` the same way.
+Ctrl+C stops it. If that window got closed and the wind stayed on, run `docker exec -it drone-sim bash -lc "python3 ~/wind.py off"`.
 `--from 300` changes where it comes from (compass degrees, default 250 = WSW, the usual direction here), and
 `--steady` turns the gusts off. Watch it lean into the wind in Gazebo, or at `pxh>` run
 `listener vehicle_local_position` to see how far it gets pushed.
+
+**Pass:** it leans into the wind (that's how a quad fights wind: leaning points part of its thrust upwind), drifts
+in gusts but keeps coming back to its spot (about 1 m on `typical`, 2 m on `windy`), holds height within about
+0.3 m, doesn't wobble or flip, and levels out when the wind stops. **Fail:** it keeps sliding away and doesn't come
+back. That means it has hit PX4's 45 deg lean limit (`MPC_TILTMAX_AIR`).
 
 Where the numbers come from: Waterloo averages about 15 to 20 km/h of wind, more from fall to spring. On Nov 3 the
 airport had 18 km/h gusting to 27, which is what `typical` is. Those are weather station numbers, 10 m up. We fly at
