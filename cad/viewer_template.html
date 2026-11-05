@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone 3D Skeleton</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, sans-serif; background: #f4f5f7; color: #1c2024; overflow: hidden; }
+  #panel { position: absolute; top: 12px; left: 12px; width: 250px; max-width: calc(100vw - 48px); padding: 12px; background: #fff; border: 1px solid #d5d8dc; border-radius: 8px; }
+  h1 { margin: 0 0 4px; font-size: 16px; }
+  p { margin: 0 0 8px; color: #555; font-size: 12px; }
+  label { display: block; margin: 4px 0; cursor: pointer; }
+  #info { position: absolute; bottom: 12px; left: 12px; padding: 8px 12px; background: #fff; border: 1px solid #d5d8dc; border-radius: 8px; max-width: calc(100vw - 48px); }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="panel">
+  <h1>Drone 3D skeleton</h1>
+  <p id="summary"></p>
+  <p>Simple blocks, and many sizes are estimates. Drag to rotate, scroll to zoom, right-drag to pan.</p>
+  <div id="toggles"></div>
+</div>
+<div id="info">Hover over a part to see what it is.</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const model = __MODEL__;
+document.getElementById('summary').textContent = model.summary;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#f4f5f7');
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 5000);
+camera.up.set(0, 0, 1);
+camera.position.set(520, -520, 340);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+document.body.prepend(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(40, 0, 0);
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(300, -200, 600);
+scene.add(sun);
+
+const grid = new THREE.GridHelper(800, 20, 0xbbbbbb, 0xdddddd);
+grid.rotation.x = Math.PI / 2;
+grid.position.z = model.ground;
+scene.add(grid);
+
+const pickable = [];
+const groups = { Propellers: new THREE.Group(), Legs: new THREE.Group(), Parts: new THREE.Group() };
+Object.values(groups).forEach(g => scene.add(g));
+
+for (const p of model.parts) {
+  const geometry = p.shape === 'cyl'
+    ? new THREE.CylinderGeometry(p.size[0], p.size[0], p.size[1], 48)
+    : new THREE.BoxGeometry(...p.size);
+  const material = new THREE.MeshStandardMaterial({ color: p.color, transparent: p.opacity < 1, opacity: p.opacity, roughness: 0.7, side: THREE.DoubleSide, depthWrite: p.opacity === 1 });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...p.center);
+  if (p.shape === 'cyl') mesh.rotation.x = Math.PI / 2;
+  if (p.yaw) mesh.rotation.z = THREE.MathUtils.degToRad(p.yaw);
+  mesh.userData = p;
+  if (p.opacity === 1) mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.4 })));
+  const group = p.name === 'Prop' ? groups.Propellers : p.name === 'Leg' ? groups.Legs : groups.Parts;
+  group.add(mesh);
+  pickable.push(mesh);
+}
+
+const viewGroups = {};
+for (const v of model.views) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(v.tris.flat(2), 3));
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: v.color, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+  scene.add(mesh);
+  viewGroups[v.name] = mesh;
+}
+
+const toggles = document.getElementById('toggles');
+const addToggle = (name, object) => {
+  const row = document.createElement('label');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = true;
+  box.addEventListener('change', () => { object.visible = box.checked; });
+  row.append(box, ' ' + name);
+  toggles.append(row);
+};
+Object.entries(viewGroups).forEach(([name, mesh]) => addToggle(name, mesh));
+addToggle('Propellers', groups.Propellers);
+addToggle('Legs', groups.Legs);
+
+const info = document.getElementById('info');
+const ray = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+renderer.domElement.addEventListener('pointermove', e => {
+  pointer.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(pointer, camera);
+  const hit = ray.intersectObjects(pickable, false).find(h => h.object.parent.visible);
+  if (hit) {
+    const p = hit.object.userData;
+    info.textContent = `${p.name}: ${p.mass} g, size source: ${p.source}`;
+  }
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+renderer.setAnimationLoop(() => renderer.render(scene, camera));
+</script>
+</body>
+</html>

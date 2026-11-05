@@ -1,21 +1,41 @@
 # CAD skeleton
 
-`skeleton.step` holds the motors, prop discs, plate, sensors and field-of-view solids. `skeleton.png` shows the top and side views. `skeleton.py` builds both and checks that no solid enters a view.
+`skeleton.step` holds 32 parts plus the field-of-view solids. `skeleton.png` shows the labelled top, side and front views with the parts table. `skeleton.py` builds both, checks every part against every other part and view, and works out the mass and balance.
+
+`render_3d.py` makes the 3D versions: `skeleton_3d.png` (views from above and below) and `skeleton_3d.html` (rotate it in a browser, which needs internet to load three.js).
 
 ```bash
 pip install cadquery matplotlib
 python3 skeleton.py
+python3 render_3d.py
 ```
 
 Lengths are mm in `base_link`: X forward, Y left, Z up, with Z = 0 at the top of the arms.
 
+The parts are simple blocks, so the STEP file is a layout reference for the Day 5 models, not the final design.
+
+## Current result
+
+| Check | Result |
+| --- | --- |
+| Part overlaps and parts in a view | 0 problems |
+| Total mass | 1136 g, with no margin added |
+| Centre of mass | x -0.2, y 0, z 39.7 mm, which is 3.7 mm above the prop plane |
+| Battery position | x -8 mm, set to balance the drone |
+| Inertia | 0.0058, 0.0071, 0.0087 kg m^2 (roll, pitch, yaw) |
+| On the ground | Flow sensor 83 mm up (80 mm minimum), camera clears by 42 mm |
+
+P1's model uses 0.0040, 0.0054, 0.0074 kg m^2 at 1.32 kg, on a smaller rotor spacing. Don't copy these numbers into the sim until the real parts are modelled on Day 7.
+
 ## Check these first
 
-These are estimates, so the result is a starting point until they're checked against real STEP files:
+The parts table in `skeleton.png` marks where each number came from. These estimates matter most:
 
-- Prop height (35 mm above the arms) and plate size (130 x 50 mm).
-- Motor positions. They assume a square X at 320 mm. The Source One V5 7" is listed as a deadcat frame, so its front motors may sit further out, which would give the camera more room.
-- Sensor sizes and view angles, which come from retailer listings.
+- Frame: plate size (130 x 50 mm), arm size, 30 mm standoffs, prop height (35 mm above the arms). We found no V5 7" CAD files. The [source_one repo](https://github.com/tbs-trappy/source_one) has a 7" deadcat DXF, but it's labelled V6.
+- Motor positions. They assume a square X at 320 mm. The frame is listed as a deadcat, so its front motors may sit further out, which would give the camera more room.
+- Layout: the Pi above the top plate and the battery above the Pi are proposals, along with the leg positions. Stacking them raises the centre of mass.
+- BEC, RC receiver, legs, bracket and the 60 g for wires and straps. The wires are counted for mass only, not modelled.
+- Sensor sizes and view angles come from retailer listings.
 
 The checks add a 3 deg view margin and 10 mm of body clearance around the props.
 
@@ -23,15 +43,15 @@ The checks add a 3 deg view margin and 10 mm of body clearance around the props.
 
 Each row is the smallest height offset that works at that forward position.
 
-| Front face x | Centre z | Past plate front | Centre of mass shift |
-| --- | --- | --- | --- |
-| 70 | -50 | 5 | 2.8 |
-| 95 | -35 | 30 | 4.0 |
-| 120 | -20 | 55 | 5.1 |
-| 145 | 0 | 80 | 6.3 |
+| Front face x | Centre z | Past plate front |
+| --- | --- | --- |
+| 70 | -50 | 5 |
+| 95 | -35 | 30 |
+| 120 | -20 | 55 |
+| 145 | 0 | 80 |
 
 The skeleton uses the first row: it needs the shortest bracket, which helps with vibration, but the camera hangs below the plate. The last row sits level with the arms, but needs an 80 mm bracket out the front.
 
 ## Landing legs
 
-The first row puts the bottom of the camera 64 mm below the arms, and the MTF-01 also sits under the plate, so the drone needs legs. About 100 mm below the plate clears the camera and keeps flow above its 80 mm minimum.
+The camera and MTF-01 sit under the frame, so the drone needs legs. Legs reaching 100 mm below the arms clear the camera by 42 mm and keep flow just above its 80 mm minimum, with only 3 mm to spare.

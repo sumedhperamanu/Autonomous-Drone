@@ -41,7 +41,8 @@ P1's picks from `docs/p1/day3-4-results.md` on `sim-5-in-7-in`, plus P3's sensor
 | How is the regulator sized? | P-10 means typical draw; size for 2x headroom and count the Pi if the camera runs through it | P1 |
 | What stops the drone near obstacles? | Depth pipeline, since PX4 Collision Prevention needs the dropped lidar | P2, P3 |
 | Where does the OAK-D Lite mount? | See `cad/README.md` | All |
-| What are the landing legs? | About 100 mm below the plate, to clear the camera and keep flow above its 80 mm minimum | All |
+| What are the landing legs? | About 100 mm below the arms, to clear the camera and keep flow above its 80 mm minimum | All |
+| Where do the Pi and battery go? | Pi above the top plate, battery above the Pi at x -8 mm, which balances the drone in the estimate | All |
 
 ## Sign-off
 

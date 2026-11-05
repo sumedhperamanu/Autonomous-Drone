@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone 3D Skeleton</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, sans-serif; background: #f4f5f7; color: #1c2024; overflow: hidden; }
+  #panel { position: absolute; top: 12px; left: 12px; width: 250px; max-width: calc(100vw - 48px); padding: 12px; background: #fff; border: 1px solid #d5d8dc; border-radius: 8px; }
+  h1 { margin: 0 0 4px; font-size: 16px; }
+  p { margin: 0 0 8px; color: #555; font-size: 12px; }
+  label { display: block; margin: 4px 0; cursor: pointer; }
+  #info { position: absolute; bottom: 12px; left: 12px; padding: 8px 12px; background: #fff; border: 1px solid #d5d8dc; border-radius: 8px; max-width: calc(100vw - 48px); }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="panel">
+  <h1>Drone 3D skeleton</h1>
+  <p id="summary"></p>
+  <p>Simple blocks, and many sizes are estimates. Drag to rotate, scroll to zoom, right-drag to pan.</p>
+  <div id="toggles"></div>
+</div>
+<div id="info">Hover over a part to see what it is.</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const model = {"parts": [{"name": "Arm", "shape": "box", "size": [159.80613254815975, 16.0, 6.0], "center": [56.5, 56.5, -3.0], "yaw": 45.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 18.5}, {"name": "Motor", "shape": "cyl", "size": [17.5, 30.0], "center": [113.0, 113.0, 15.0], "yaw": 0.0, "color": "#737373", "opacity": 1.0, "source": "P1", "mass": 52.0}, {"name": "Prop", "shape": "cyl", "size": [88.9, 2.0], "center": [113.0, 113.0, 36.0], "yaw": 0.0, "color": "#bfbfbf", "opacity": 0.3, "source": "P1", "mass": 7.0}, {"name": "Leg", "shape": "cyl", "size": [4.0, 100.0], "center": [60.0, 60.0, -56.0], "yaw": 0.0, "color": "#2ca02c", "opacity": 1.0, "source": "estimate", "mass": 8.0}, {"name": "Standoff", "shape": "cyl", "size": [2.5, 30.0], "center": [40.0, 18.0, 17.0], "yaw": 0.0, "color": "#999999", "opacity": 1.0, "source": "estimate", "mass": 0.0}, {"name": "Arm", "shape": "box", "size": [159.80613254815975, 16.0, 6.0], "center": [56.5, -56.5, -3.0], "yaw": -45.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 18.5}, {"name": "Motor", "shape": "cyl", "size": [17.5, 30.0], "center": [113.0, -113.0, 15.0], "yaw": 0.0, "color": "#737373", "opacity": 1.0, "source": "P1", "mass": 52.0}, {"name": "Prop", "shape": "cyl", "size": [88.9, 2.0], "center": [113.0, -113.0, 36.0], "yaw": 0.0, "color": "#bfbfbf", "opacity": 0.3, "source": "P1", "mass": 7.0}, {"name": "Leg", "shape": "cyl", "size": [4.0, 100.0], "center": [60.0, -60.0, -56.0], "yaw": 0.0, "color": "#2ca02c", "opacity": 1.0, "source": "estimate", "mass": 8.0}, {"name": "Standoff", "shape": "cyl", "size": [2.5, 30.0], "center": [40.0, -18.0, 17.0], "yaw": 0.0, "color": "#999999", "opacity": 1.0, "source": "estimate", "mass": 0.0}, {"name": "Arm", "shape": "box", "size": [159.80613254815975, 16.0, 6.0], "center": [-56.5, 56.5, -3.0], "yaw": 135.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 18.5}, {"name": "Motor", "shape": "cyl", "size": [17.5, 30.0], "center": [-113.0, 113.0, 15.0], "yaw": 0.0, "color": "#737373", "opacity": 1.0, "source": "P1", "mass": 52.0}, {"name": "Prop", "shape": "cyl", "size": [88.9, 2.0], "center": [-113.0, 113.0, 36.0], "yaw": 0.0, "color": "#bfbfbf", "opacity": 0.3, "source": "P1", "mass": 7.0}, {"name": "Leg", "shape": "cyl", "size": [4.0, 100.0], "center": [-60.0, 60.0, -56.0], "yaw": 0.0, "color": "#2ca02c", "opacity": 1.0, "source": "estimate", "mass": 8.0}, {"name": "Standoff", "shape": "cyl", "size": [2.5, 30.0], "center": [-40.0, 18.0, 17.0], "yaw": 0.0, "color": "#999999", "opacity": 1.0, "source": "estimate", "mass": 0.0}, {"name": "Arm", "shape": "box", "size": [159.80613254815975, 16.0, 6.0], "center": [-56.5, -56.5, -3.0], "yaw": -135.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 18.5}, {"name": "Motor", "shape": "cyl", "size": [17.5, 30.0], "center": [-113.0, -113.0, 15.0], "yaw": 0.0, "color": "#737373", "opacity": 1.0, "source": "P1", "mass": 52.0}, {"name": "Prop", "shape": "cyl", "size": [88.9, 2.0], "center": [-113.0, -113.0, 36.0], "yaw": 0.0, "color": "#bfbfbf", "opacity": 0.3, "source": "P1", "mass": 7.0}, {"name": "Leg", "shape": "cyl", "size": [4.0, 100.0], "center": [-60.0, -60.0, -56.0], "yaw": 0.0, "color": "#2ca02c", "opacity": 1.0, "source": "estimate", "mass": 8.0}, {"name": "Standoff", "shape": "cyl", "size": [2.5, 30.0], "center": [-40.0, -18.0, 17.0], "yaw": 0.0, "color": "#999999", "opacity": 1.0, "source": "estimate", "mass": 0.0}, {"name": "Bottom plate", "shape": "box", "size": [130.0, 50.0, 2.5], "center": [0, 0, -7.25], "yaw": 0.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 24.0}, {"name": "Middle plate", "shape": "box", "size": [130.0, 50.0, 2.0], "center": [0, 0, 1.0], "yaw": 0.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 10.0}, {"name": "Top plate", "shape": "box", "size": [130.0, 50.0, 2.0], "center": [0, 0, 33.0], "yaw": 0.0, "color": "#4c4c4c", "opacity": 1.0, "source": "estimate", "mass": 15.4}, {"name": "4-in-1 ESC", "shape": "box", "size": [44.0, 43.5, 5.2], "center": [0, 0, 6.6], "yaw": 0.0, "color": "#d62728", "opacity": 1.0, "source": "listing", "mass": 13.5}, {"name": "Flight controller", "shape": "box", "size": [36.0, 36.0, 8.0], "center": [0, 0, 18.0], "yaw": 0.0, "color": "#9467bd", "opacity": 1.0, "source": "listing", "mass": 10.0}, {"name": "BEC", "shape": "box", "size": [40.0, 20.0, 8.0], "center": [-42.0, 0, 7.0], "yaw": 0.0, "color": "#8c564b", "opacity": 1.0, "source": "estimate", "mass": 10.0}, {"name": "RC receiver", "shape": "box", "size": [25.0, 15.0, 5.0], "center": [45.0, 0, 5.5], "yaw": 0.0, "color": "#e377c2", "opacity": 1.0, "source": "estimate", "mass": 2.0}, {"name": "Raspberry Pi 5", "shape": "box", "size": [85.0, 56.0, 20.0], "center": [0, 0, 50.0], "yaw": 0.0, "color": "#bcbd22", "opacity": 1.0, "source": "P1", "mass": 56.0}, {"name": "MTF-01", "shape": "box", "size": [29.3, 17.0, 14.5], "center": [20.0, 0, -15.75], "yaw": 0.0, "color": "#ff7f0e", "opacity": 1.0, "source": "listing", "mass": 4.5}, {"name": "OAK-D Lite", "shape": "box", "size": [17.5, 91.0, 28.0], "center": [61.25, 0, -50], "yaw": 0.0, "color": "#1f77b4", "opacity": 1.0, "source": "listing", "mass": 61.0}, {"name": "Camera bracket", "shape": "box", "size": [12.0, 40.0, 27.5], "center": [61.25, 0, -22.25], "yaw": 0.0, "color": "#17becf", "opacity": 1.0, "source": "estimate", "mass": 8.0}, {"name": "4S 5000 mAh battery", "shape": "box", "size": [155.0, 48.0, 35.0], "center": [-8, 0, 79.5], "yaw": 0.0, "color": "#ffd700", "opacity": 1.0, "source": "P1", "mass": 520.0}], "views": [{"name": "Camera view", "color": "#1f77b4", "tris": [[[70, 0.0, -50], [240.0, -125.7933827548429, -144.23253874697073], [240.0, 125.7933827548429, -144.23253874697073]], [[70, 0.0, -50], [240.0, 125.7933827548429, -144.23253874697073], [240.0, 125.7933827548429, 44.23253874697073]], [[70, 0.0, -50], [240.0, 125.7933827548429, 44.23253874697073], [240.0, -125.7933827548429, 44.23253874697073]], [[70, 0.0, -50], [240.0, -125.7933827548429, 44.23253874697073], [240.0, -125.7933827548429, -144.23253874697073]]]}, {"name": "Flow view", "color": "#ff7f0e", "tris": [[[20.0, 0, -23.0], [51.86071490793951, 0.0, -106.0], [51.06190026581777, 7.089676037830569, -106.0]], [[20.0, 0, -23.0], [51.06190026581777, 7.089676037830569, -106.0], [48.70551224116799, 13.823846115215321, -106.0]], [[20.0, 0, -23.0], [48.70551224116799, 13.823846115215321, -106.0], [44.9097099689656, 19.8648308250288, -106.0]], [[20.0, 0, -23.0], [44.9097099689656, 19.8648308250288, -106.0], [39.864830825028804, 24.909709968965604, -106.0]], [[20.0, 0, -23.0], [39.864830825028804, 24.909709968965604, -106.0], [33.823846115215325, 28.705512241167987, -106.0]], [[20.0, 0, -23.0], [33.823846115215325, 28.705512241167987, -106.0], [27.08967603783057, 31.06190026581777, -106.0]], [[20.0, 0, -23.0], [27.08967603783057, 31.06190026581777, -106.0], [20.000000000000004, 31.86071490793951, -106.0]], [[20.0, 0, -23.0], [20.000000000000004, 31.86071490793951, -106.0], [12.910323962169432, 31.06190026581777, -106.0]], [[20.0, 0, -23.0], [12.910323962169432, 31.06190026581777, -106.0], [6.17615388478468, 28.705512241167987, -106.0]], [[20.0, 0, -23.0], [6.17615388478468, 28.705512241167987, -106.0], [0.13516917497119962, 24.909709968965608, -106.0]], [[20.0, 0, -23.0], [0.13516917497119962, 24.909709968965608, -106.0], [-4.909709968965593, 19.864830825028815, -106.0]], [[20.0, 0, -23.0], [-4.909709968965593, 19.864830825028815, -106.0], [-8.705512241167984, 13.823846115215325, -106.0]], [[20.0, 0, -23.0], [-8.705512241167984, 13.823846115215325, -106.0], [-11.061900265817773, 7.089676037830559, -106.0]], [[20.0, 0, -23.0], [-11.061900265817773, 7.089676037830559, -106.0], [-11.86071490793951, 3.901812253055448e-15, -106.0]], [[20.0, 0, -23.0], [-11.86071490793951, 3.901812253055448e-15, -106.0], [-11.061900265817773, -7.089676037830551, -106.0]], [[20.0, 0, -23.0], [-11.061900265817773, -7.089676037830551, -106.0], [-8.705512241167987, -13.823846115215318, -106.0]], [[20.0, 0, -23.0], [-8.705512241167987, -13.823846115215318, -106.0], [-4.909709968965597, -19.86483082502881, -106.0]], [[20.0, 0, -23.0], [-4.909709968965597, -19.86483082502881, -106.0], [0.13516917497119252, -24.9097099689656, -106.0]], [[20.0, 0, -23.0], [0.13516917497119252, -24.9097099689656, -106.0], [6.176153884784673, -28.705512241167984, -106.0]], [[20.0, 0, -23.0], [6.176153884784673, -28.705512241167984, -106.0], [12.910323962169425, -31.06190026581777, -106.0]], [[20.0, 0, -23.0], [12.910323962169425, -31.06190026581777, -106.0], [19.999999999999993, -31.86071490793951, -106.0]], [[20.0, 0, -23.0], [19.999999999999993, -31.86071490793951, -106.0], [27.089676037830536, -31.061900265817776, -106.0]], [[20.0, 0, -23.0], [27.089676037830536, -31.061900265817776, -106.0], [33.82384611521532, -28.70551224116799, -106.0]], [[20.0, 0, -23.0], [33.82384611521532, -28.70551224116799, -106.0], [39.8648308250288, -24.909709968965608, -106.0]], [[20.0, 0, -23.0], [39.8648308250288, -24.909709968965608, -106.0], [44.9097099689656, -19.864830825028807, -106.0]], [[20.0, 0, -23.0], [44.9097099689656, -19.864830825028807, -106.0], [48.705512241167995, -13.823846115215302, -106.0]], [[20.0, 0, -23.0], [48.705512241167995, -13.823846115215302, -106.0], [51.06190026581777, -7.089676037830577, -106.0]], [[20.0, 0, -23.0], [51.06190026581777, -7.089676037830577, -106.0], [51.86071490793951, 0.0, -106.0]]]}, {"name": "Range beam", "color": "#d62728", "tris": [[[20.0, 0, -23.0], [24.34984568049242, 0.0, -106.0], [24.2407859675956, 0.9679317233890135, -106.0]], [[20.0, 0, -23.0], [24.2407859675956, 0.9679317233890135, -106.0], [23.919075538303485, 1.8873273084364106, -106.0]], [[20.0, 0, -23.0], [23.919075538303485, 1.8873273084364106, -106.0], [23.400846296886545, 2.712084421446287, -106.0]], [[20.0, 0, -23.0], [23.400846296886545, 2.712084421446287, -106.0], [22.71208442144629, 3.400846296886545, -106.0]], [[20.0, 0, -23.0], [22.71208442144629, 3.400846296886545, -106.0], [21.88732730843641, 3.9190755383034843, -106.0]], [[20.0, 0, -23.0], [21.88732730843641, 3.9190755383034843, -106.0], [20.967931723389015, 4.2407859675956, -106.0]], [[20.0, 0, -23.0], [20.967931723389015, 4.2407859675956, -106.0], [20.0, 4.349845680492421, -106.0]], [[20.0, 0, -23.0], [20.0, 4.349845680492421, -106.0], [19.032068276610985, 4.2407859675956, -106.0]], [[20.0, 0, -23.0], [19.032068276610985, 4.2407859675956, -106.0], [18.11267269156359, 3.9190755383034843, -106.0]], [[20.0, 0, -23.0], [18.11267269156359, 3.9190755383034843, -106.0], [17.28791557855371, 3.4008462968865456, -106.0]], [[20.0, 0, -23.0], [17.28791557855371, 3.4008462968865456, -106.0], [16.599153703113455, 2.712084421446289, -106.0]], [[20.0, 0, -23.0], [16.599153703113455, 2.712084421446289, -106.0], [16.080924461696515, 1.887327308436411, -106.0]], [[20.0, 0, -23.0], [16.080924461696515, 1.887327308436411, -106.0], [15.759214032404401, 0.9679317233890121, -106.0]], [[20.0, 0, -23.0], [15.759214032404401, 0.9679317233890121, -106.0], [15.650154319507578, 5.327024589399983e-16, -106.0]], [[20.0, 0, -23.0], [15.650154319507578, 5.327024589399983e-16, -106.0], [15.759214032404401, -0.967931723389011, -106.0]], [[20.0, 0, -23.0], [15.759214032404401, -0.967931723389011, -106.0], [16.080924461696515, -1.8873273084364102, -106.0]], [[20.0, 0, -23.0], [16.080924461696515, -1.8873273084364102, -106.0], [16.599153703113455, -2.7120844214462885, -106.0]], [[20.0, 0, -23.0], [16.599153703113455, -2.7120844214462885, -106.0], [17.28791557855371, -3.4008462968865447, -106.0]], [[20.0, 0, -23.0], [17.28791557855371, -3.4008462968865447, -106.0], [18.11267269156359, -3.919075538303484, -106.0]], [[20.0, 0, -23.0], [18.11267269156359, -3.919075538303484, -106.0], [19.032068276610985, -4.2407859675956, -106.0]], [[20.0, 0, -23.0], [19.032068276610985, -4.2407859675956, -106.0], [20.0, -4.349845680492421, -106.0]], [[20.0, 0, -23.0], [20.0, -4.349845680492421, -106.0], [20.967931723389007, -4.240785967595601, -106.0]], [[20.0, 0, -23.0], [20.967931723389007, -4.240785967595601, -106.0], [21.88732730843641, -3.9190755383034848, -106.0]], [[20.0, 0, -23.0], [21.88732730843641, -3.9190755383034848, -106.0], [22.712084421446285, -3.4008462968865456, -106.0]], [[20.0, 0, -23.0], [22.712084421446285, -3.4008462968865456, -106.0], [23.400846296886545, -2.712084421446288, -106.0]], [[20.0, 0, -23.0], [23.400846296886545, -2.712084421446288, -106.0], [23.919075538303485, -1.887327308436408, -106.0]], [[20.0, 0, -23.0], [23.919075538303485, -1.887327308436408, -106.0], [24.2407859675956, -0.9679317233890145, -106.0]], [[20.0, 0, -23.0], [24.2407859675956, -0.9679317233890145, -106.0], [24.34984568049242, 0.0, -106.0]]]}], "ground": -106.0, "summary": "1136 g, centre of mass +3.7 mm from the prop plane"};
+document.getElementById('summary').textContent = model.summary;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#f4f5f7');
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 5000);
+camera.up.set(0, 0, 1);
+camera.position.set(520, -520, 340);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+document.body.prepend(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(40, 0, 0);
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(300, -200, 600);
+scene.add(sun);
+
+const grid = new THREE.GridHelper(800, 20, 0xbbbbbb, 0xdddddd);
+grid.rotation.x = Math.PI / 2;
+grid.position.z = model.ground;
+scene.add(grid);
+
+const pickable = [];
+const groups = { Propellers: new THREE.Group(), Legs: new THREE.Group(), Parts: new THREE.Group() };
+Object.values(groups).forEach(g => scene.add(g));
+
+for (const p of model.parts) {
+  const geometry = p.shape === 'cyl'
+    ? new THREE.CylinderGeometry(p.size[0], p.size[0], p.size[1], 48)
+    : new THREE.BoxGeometry(...p.size);
+  const material = new THREE.MeshStandardMaterial({ color: p.color, transparent: p.opacity < 1, opacity: p.opacity, roughness: 0.7, side: THREE.DoubleSide, depthWrite: p.opacity === 1 });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...p.center);
+  if (p.shape === 'cyl') mesh.rotation.x = Math.PI / 2;
+  if (p.yaw) mesh.rotation.z = THREE.MathUtils.degToRad(p.yaw);
+  mesh.userData = p;
+  if (p.opacity === 1) mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.4 })));
+  const group = p.name === 'Prop' ? groups.Propellers : p.name === 'Leg' ? groups.Legs : groups.Parts;
+  group.add(mesh);
+  pickable.push(mesh);
+}
+
+const viewGroups = {};
+for (const v of model.views) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(v.tris.flat(2), 3));
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: v.color, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+  scene.add(mesh);
+  viewGroups[v.name] = mesh;
+}
+
+const toggles = document.getElementById('toggles');
+const addToggle = (name, object) => {
+  const row = document.createElement('label');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = true;
+  box.addEventListener('change', () => { object.visible = box.checked; });
+  row.append(box, ' ' + name);
+  toggles.append(row);
+};
+Object.entries(viewGroups).forEach(([name, mesh]) => addToggle(name, mesh));
+addToggle('Propellers', groups.Propellers);
+addToggle('Legs', groups.Legs);
+
+const info = document.getElementById('info');
+const ray = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+renderer.domElement.addEventListener('pointermove', e => {
+  pointer.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(pointer, camera);
+  const hit = ray.intersectObjects(pickable, false).find(h => h.object.parent.visible);
+  if (hit) {
+    const p = hit.object.userData;
+    info.textContent = `${p.name}: ${p.mass} g, size source: ${p.source}`;
+  }
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+renderer.setAnimationLoop(() => renderer.render(scene, camera));
+</script>
+</body>
+</html>

@@ -50,8 +50,8 @@ From `cad/skeleton.py`. These are proposed until the team picks the mount and ch
 |---|---|---|
 | `base_link` -> `oakd_link` | 0.0700 0.0000 -0.0500 | 0 0 0 |
 | `oakd_link` -> `oakd_left_optical` | 0.0000 0.0375 0.0000 | -1.5708 0 -1.5708 |
-| `base_link` -> `flow_link` | 0.0200 0.0000 -0.0255 | 0 0 0 |
-| `base_link` -> `lidar_sensor_link` | 0.0200 0.0000 -0.0255 | 0 1.5708 0 |
+| `base_link` -> `flow_link` | 0.0200 0.0000 -0.0230 | 0 0 0 |
+| `base_link` -> `lidar_sensor_link` | 0.0200 0.0000 -0.0230 | 0 1.5708 0 |
 
 ## Known differences to fix
 
