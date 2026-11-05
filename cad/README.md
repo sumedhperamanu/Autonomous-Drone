@@ -2,7 +2,51 @@
 
 `skeleton.step` holds 32 parts plus the field-of-view solids. `skeleton.png` shows the labelled top, side and front views with the parts table. `skeleton.py` builds both, checks every part against every other part and view, and works out the mass and balance.
 
-`render_3d.py` makes the 3D versions: `skeleton_3d.png` (views from above and below) and `skeleton_3d.html` (rotate it in a browser, which needs internet to load three.js).
+`render_3d.py` makes the 3D versions: `skeleton_3d.png` (views from above and below) and `skeleton_3d.html` (rotate it in a browser).
+
+## View the 3D model
+
+You need a browser and an internet connection, which loads the 3D library. You don't need ROS, Python or CAD software.
+
+GitHub only shows the HTML file's code when you click it, so get a copy on your computer first. Use either way:
+
+**Download just the file**
+
+1. Open [`cad/skeleton_3d.html`](https://github.com/sumedhperamanu/Autonomous-Drone/blob/p3/interface-agreement/cad/skeleton_3d.html) on GitHub.
+2. Click the **Download raw file** button at the top right of the file.
+3. Double-click the downloaded file to open it in your browser.
+
+**Or use a copy of the repo**
+
+```bash
+git fetch origin
+git checkout p3/interface-agreement
+git pull
+```
+
+Then open the file:
+
+- Windows: `start cad\skeleton_3d.html`
+- WSL Ubuntu: `explorer.exe "$(wslpath -w cad/skeleton_3d.html)"`
+- Linux: `xdg-open cad/skeleton_3d.html`
+
+Once this branch is merged, use `main` in place of `p3/interface-agreement`.
+
+**Using the viewer**
+
+| Do this | To do this |
+| --- | --- |
+| Left-drag | Rotate |
+| Scroll | Zoom |
+| Right-drag | Move the view |
+| Hover over a part | See its name, mass and where the number came from |
+| Use the checkboxes | Show or hide the camera view, flow view, range beam, props and legs |
+
+Hide the props and camera view to see the parts in the middle. The camera view is drawn only 170 mm long so it doesn't cover the drone; the real camera sees 5 m or more.
+
+If the page shows no model, check your internet connection. Offline, use `skeleton_3d.png` instead.
+
+## Rebuild the files
 
 ```bash
 pip install cadquery matplotlib
