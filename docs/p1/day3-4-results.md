@@ -132,6 +132,49 @@ Both hold on with lots of thrust spare. The weak spot is position: gusts push th
 0.5 m obstacle margin. The position gains are still PX4 defaults, so that's something to tune (and to retest with
 flow instead of GPS).
 
+## Step tests in wind (Nov 5)
+
+The same scripted flight as the baseline step tests, on the 7" (4S, K 0.5), with `sim/wind.py` blowing the whole
+time from 250 deg. `sim/tests/wind_plots.sh` flies no wind, typical and windy back to back.
+
+| | No wind | Typical (5 m/s, gusts to 8) | Windy (9 m/s, gusts to 15) | Pass (calm air) |
+| --- | --- | --- | --- | --- |
+| Hover motor output, average (lowest to highest motor) | 0.386 (all four the same) | 0.378 (0.34 to 0.42) | 0.372 (0.33 to 0.42) | under 0.5 |
+| Altitude 2 -> 3 m: rise, overshoot, settle | 1.78 s, 1%, 2.7 s | 2.14 s, 1%, 3.1 s | 1.65 s, 13%, never inside 5% | overshoot under 10%, settle under 5 s |
+| Altitude 3 -> 2 m: rise, overshoot, settle | 2.14 s, 0%, 3.1 s | 1.86 s, 1%, 2.7 s | 2.05 s, 0%, 6.7 s | same |
+| Height while hovering at 2 m | 1.98 to 2.13 m | 1.91 to 2.23 m | 1.74 to 2.23 m | |
+| Roll 10 deg: rise, overshoot | 0.52 s, 0% | levels off at 8 deg (never reaches 9), 0% | starts from -15 deg, levels off at 8 deg | rise under 1 s, overshoot under 15% |
+| Pitch 10 deg: rise, overshoot | 0.46 s, 0% | 0.40 s, 7% | starts from 10 deg, so no real step | same |
+| Rate-tracking lag, roll / pitch | 38 / 40 ms | 32 / 58 ms | 38 / 42 ms | under 60 ms |
+| Hover wobble | 0.13 deg/s | 0.27 deg/s | 4.8 deg/s, all slow rocking from gusts | under 1 deg/s |
+| Off its spot: take-off / hover / during the angle steps | 0 / 0 / 2.3 m | 4.1 / 0.7 / 5.7 m | 2.1 / 1.3 / 24 m | |
+
+Plots: `docs/p1/plots/7in_4s_typical.png` and `docs/p1/plots/7in_4s_windy.png`. The grey lines are the no-wind
+flight, so you can see what the wind changed. The pass limits were written for calm air, so a miss in the wind
+columns isn't a failure on its own.
+
+- Height control mostly doesn't notice the wind. In typical wind the rise and settle times move by a few tenths of a
+  second, about what they move between two identical calm runs. In the windy run gusts push the height around by up
+  to 0.25 m, so it overshoots the 3 m step by 13% and doesn't stay inside the 5 cm band.
+- The motors split up: the ones facing the wind work harder so the drone can lean into it. The busiest one is at
+  0.42 in both wind cases, so there's lots of thrust left.
+- To stay in place the drone leans into the wind: about 8 deg in typical wind and 16 to 22 deg in the windy run,
+  half a second before each step. In typical wind it was nearly level (about 1 deg) when the step started, so that
+  step is a fair test. In the windy run it was still at -15 deg of roll and 10 deg of pitch, so those "0 -> 10 deg"
+  steps are really a jump of about 25 deg and no jump at all, and their rise and overshoot numbers don't compare to the calm
+  ones. The useful part is the shape: the angle loop is as quick as in calm air and the rate lag stays under 60 ms
+  (58 ms for typical pitch is close; lag moves about 6 ms between identical calm runs).
+- The angle levels off a bit away from 10 deg in wind (roll about 8 deg in both, typical pitch about 10.7) because
+  the wind pushes on the drone and the controller needs more than the 1 s window to catch up. That's the wind, not
+  the gains.
+- Windy wobble is 4.8 deg/s, but 98% of it is below 2 Hz: that's gusts rocking the drone. Shaking from a gain that's
+  too high shows up at 10 Hz and above, and there's almost nothing there.
+- Position is the weak spot, same as the Nov 3 wind test. While hovering it stays within about 1.3 m. During the 1 s
+  angle steps it stops leaning into the wind, so the wind speeds it up (up to 9 m/s in the windy run) and carries it
+  24 m before position hold brings it back. A real mission won't hold a fixed angle like this (P2's node sends
+  position or velocity setpoints), but it shows how fast the drone gets blown away when it isn't fighting the wind.
+  The position gains are still PX4 defaults, so that's for Day 5.
+
 ## Parameter files (`params/`)
 
 - `sim_fiveinch_baseline.params`, `sim_seveninch_baseline.params`: the gains and hover thrust above, plus P3's speed
@@ -166,9 +209,16 @@ Failsafes in both:
   - The sensor airframes (22051, 22053) now use the barometer for height, same as the real drone.
   - `params/README.md` has a port map, and the `NAV_DLL_ACT` notes no longer contradict each other.
   - `step_tests.py` checks that PX4 accepted each parameter, the mode change and the arm before it starts a test.
-    Not re-run in sim yet.
+  - Sumedh's second review: while `step_tests.py` waited for PX4's replies it stopped sending setpoints, and PX4
+    drops out of offboard after 0.5 s without them. It now keeps sending while it waits. Re-flown in Gazebo on Nov 4
+    and passed: hover 0.386, roll 0.49 s, pitch 0.50 s, lag 50 / 54 ms.
   - `sweep.sh` and `final_batch.sh` clear their output file first, so old runs don't mix in.
   - 4S gain comments: the 0.5 rate gain came from the 6S sweep. The 4S drone never shook, even at 1.0.
+- Gazebo take-off glitch (Nov 5): in 2 of 7 runs Gazebo ignored the motors. PX4 ran them up to full and the drone
+  never left the ground. `step_tests.py` now checks the height after take-off and stops with a message, and
+  `wind_plots.sh` tries each case twice. We don't know the cause yet.
+- `analyze_steps.py` only counts a roll or pitch step when the setpoint jumps to 10 deg and stays there, so a lean
+  into the wind isn't mistaken for a step.
 
 ## Not done yet
 
@@ -184,3 +234,4 @@ Failsafes in both:
 - The sim inertia was worked out with the 6S 4000 pack. The 4S 5000 pack is about 5% more on roll and yaw. Update it
   together with the 320 mm spacing.
 - Position hold in gusts: tune `MPC_XY_P` / `MPC_XY_VEL_*` with `sim/wind.py`, then retest on flow instead of GPS.
+- Find out why Gazebo sometimes ignores the motors at take-off (2 of 7 runs on Nov 5).

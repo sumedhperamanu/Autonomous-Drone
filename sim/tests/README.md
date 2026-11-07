@@ -33,6 +33,13 @@ Gain sweep, several gains in a row (results in `/tmp/sweep_<model>.txt`):
 bash sim/tests/sweep.sh 22054 gz_seveninch_4s 0.3 0.5 0.7 1.0
 ```
 
+The same test in wind (uses `sim/wind.py`, so the gusts are random and no two runs are identical):
+
+```bash
+WIND=typical PITCH=1 bash sim/tests/run_case.sh 22054 gz_seveninch_4s     # 5 m/s, gusts to about 8
+bash sim/tests/wind_plots.sh      # 7" with no wind, typical and windy, plus graphs of each wind run over the no-wind one
+```
+
 Set `PX4_DIR=...` if PX4 isn't at `~/PX4-Autopilot` or `/opt/PX4-Autopilot`.
 
 | File | What it does |
@@ -44,6 +51,7 @@ Set `PX4_DIR=...` if PX4 isn't at `~/PX4-Autopilot` or `/opt/PX4-Autopilot`.
 | `sweep.sh` | `run_case.sh` at several rate gains |
 | `summarize_logs.py` | One line per log, for comparing runs |
 | `final_batch.sh` | The Day 4 final set of flights |
+| `wind_plots.sh` | The 7" in no wind, typical and windy, with graphs (saved in `~/plots-wind`) |
 
 ## Reading the numbers
 
@@ -62,5 +70,10 @@ Some things I learned doing this:
 - Rate-tracking lag changes by about 6 ms between identical runs, so 40 vs 46 ms isn't a real difference.
 - During the roll and pitch steps there's no position hold, so the drone drifts a couple of metres sideways. Fine in sim.
   On a real drone don't run these without at least 5 m of space all round.
+- Now and then (2 of 7 runs on Nov 5) Gazebo doesn't respond to the motors: PX4 runs them up to full power and
+  the drone sits on the ground. `step_tests.py` checks the height after the 10 s climb and stops with a clear
+  message, and `wind_plots.sh` tries a failed flight once more. The cause isn't known yet.
+- In wind the drone is already tilted when a roll or pitch step starts, and the gusts push it while it holds the
+  angle, so the rise-time numbers look worse than the controller really is. Look at the graphs.
 - Before Nov 3, `step_tests.py` measured hover thrust from old queued messages and came out about 20% low, which made
   the drone dip during the angle steps. Fixed now.

@@ -84,32 +84,50 @@ def set_param(name, value):
 for kv in a.param:
     n, v = kv.split('='); set_param(n, v)
 
-def wait_ack(command, what, timeout=3):
+def wait_for(match, timeout):
+    """Wait for a message that match() accepts, but keep streaming the 2 m setpoint the whole time.
+    PX4 drops out of offboard if setpoints stop for COM_OF_LOSS_T (0.5 s in our params, 1 s default),
+    so this can't just block on recv_match like a normal wait."""
     end = time.time() + timeout
     while time.time() < end:
-        ack = m.recv_match(type='COMMAND_ACK', blocking=True, timeout=max(end - time.time(), 0.01))
-        if ack and ack.command == command:
-            if ack.result != M.MAV_RESULT_ACCEPTED:
-                sys.exit(f'{what} refused by PX4 (result {ack.result}). Check the pxh> window for the reason.')
-            return
-    sys.exit(f'{what}: no answer from PX4')
+        pos(-2.0)
+        msg = m.recv_match(blocking=True, timeout=0.05)
+        while msg:
+            r = match(msg)
+            if r is not None:
+                return r
+            msg = m.recv_match(blocking=False)
+    return None
+
+def wait_ack(command, what, timeout=3):
+    ack = wait_for(lambda x: x if x.get_type() == 'COMMAND_ACK' and x.command == command else None, timeout)
+    if ack is None:
+        sys.exit(f'{what}: no answer from PX4')
+    if ack.result != M.MAV_RESULT_ACCEPTED:
+        sys.exit(f'{what} refused by PX4 (result {ack.result}). Check the pxh> window for the reason.')
 
 def wait_state(want_armed, want_offboard, timeout=5):
     """Check the heartbeat: armed, and PX4 main mode 6 = OFFBOARD."""
-    end = time.time() + timeout
-    while time.time() < end:
-        hb = m.recv_match(type='HEARTBEAT', blocking=True, timeout=1)
-        if not hb or hb.get_srcSystem() != m.target_system:
-            continue
-        armed = bool(hb.base_mode & M.MAV_MODE_FLAG_SAFETY_ARMED)
-        offboard = ((hb.custom_mode >> 16) & 0xFF) == 6
-        if armed == want_armed and offboard == want_offboard:
-            return
-    sys.exit('the drone did not reach offboard + armed. Check the pxh> window')
+    def ok(x):
+        if x.get_type() != 'HEARTBEAT' or x.get_srcSystem() != m.target_system:
+            return None
+        armed = bool(x.base_mode & M.MAV_MODE_FLAG_SAFETY_ARMED)
+        offboard = ((x.custom_mode >> 16) & 0xFF) == 6
+        return True if (armed == want_armed and offboard == want_offboard) else None
+    if not wait_for(ok, timeout):
+        sys.exit('the drone did not reach offboard + armed. Check the pxh> window')
 
-# ask for the thrust setpoint stream, so the roll step can use the real hover thrust
-m.mav.command_long_send(m.target_system, m.target_component, M.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
-                        M.MAVLINK_MSG_ID_ATTITUDE_TARGET, 20000, 0, 0, 0, 0, 0)
+# ask for the thrust setpoint stream (so the roll step can use the real hover thrust) and the position stream
+for msg_id in (M.MAVLINK_MSG_ID_ATTITUDE_TARGET, M.MAVLINK_MSG_ID_LOCAL_POSITION_NED):
+    m.mav.command_long_send(m.target_system, m.target_component, M.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
+                            msg_id, 20000, 0, 0, 0, 0, 0)
+
+def fresh(msg_type, timeout=2):
+    """The next message of this type that PX4 sends from now on. The queue is emptied first: during a long hold it
+    fills with old messages, and when it's full the newest ones get dropped, so the last one queued can be seconds old."""
+    while m.recv_msg() is not None:
+        pass
+    return wait_for(lambda x: x if x.get_type() == msg_type else None, timeout)
 
 print('streaming setpoints, switching to offboard, arming')
 hold(pos, 1.5, -2.0)
@@ -121,6 +139,15 @@ wait_ack(M.MAV_CMD_COMPONENT_ARM_DISARM, 'arming')
 wait_state(True, True)
 print('armed in offboard')
 print('climb to 2 m and settle (10 s)'); hold(pos, 10, -2.0)
+# Check it really took off. Now and then Gazebo doesn't respond to the motors: PX4 runs them up to full power and
+# the drone just sits there. Without this check the test carries on and prints numbers that mean nothing.
+lp = fresh('LOCAL_POSITION_NED')
+if lp is None or -lp.z < 1.0:
+    m.mav.command_long_send(m.target_system, m.target_component, M.MAV_CMD_COMPONENT_ARM_DISARM, 0,
+                            0, 21196, 0, 0, 0, 0, 0)   # 21196 = disarm even though PX4 thinks it's flying
+    height = -lp.z if lp else float('nan')
+    sys.exit(f'the drone never took off (height {height:.2f} m after 10 s). Gazebo did not respond to the motors. '
+             'Run the test again.')
 print('STEP: 2 m -> 3 m (8 s)');          hold(pos, 8, -3.0)
 print('STEP: 3 m -> 2 m (8 s)');          hold(pos, 8, -2.0)
 # Measure the thrust the position controller uses to hover, for 2 s.
@@ -140,8 +167,6 @@ print(f'hover thrust measured: {thr:.3f} ({len(samples)} samples)')
 # Attitude mode does not hold height by itself, so this script adds a small height
 # loop on top: thrust = hover thrust + gain x height error. Without it the drone
 # climbs or sinks during the roll test, which also changes the roll response.
-m.mav.command_long_send(m.target_system, m.target_component, M.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
-                        M.MAVLINK_MSG_ID_LOCAL_POSITION_NED, 20000, 0, 0, 0, 0, 0)
 state = {'z': -2.0, 'vz': 0.0}
 def att_hold(roll_deg, seconds, z_ref=-2.0, pitch_deg=0.0):
     end = time.time() + seconds

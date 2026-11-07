@@ -5,12 +5,17 @@ Prints, for the altitude steps and the roll step:
   rise time (10% -> 90% of the step), overshoot (% of step), settling time (stays within 5%),
   and the hover motor outputs. These are the numbers you compare between airframes and tunings.
 Usage: python3 analyze_steps.py path/to/log.ulg [--plot out.png]
+       add --calm other.ulg to draw a no-wind run in grey under this one (for wind runs),
+       --label 'typical wind' to name this run in the legend, --title '...' for the plot title.
 """
 import sys, argparse
 import numpy as np
 from pyulog import ULog
 
-ap = argparse.ArgumentParser(); ap.add_argument('log'); ap.add_argument('--plot'); a = ap.parse_args()
+ap = argparse.ArgumentParser(); ap.add_argument('log'); ap.add_argument('--plot')
+ap.add_argument('--calm', help='a no-wind log to draw underneath, in grey')
+ap.add_argument('--label', default='this run'); ap.add_argument('--title')
+a = ap.parse_args()
 u = ULog(a.log)
 def topic(name, i=0):
     for d in u.data_list:
@@ -58,7 +63,13 @@ if jumps and mot is not None:
 def roll_of(q0, q1, q2, q3): return np.degrees(np.arctan2(2*(q0*q1 + q2*q3), 1 - 2*(q1*q1 + q2*q2)))
 rs = roll_of(*(atts[f'q_d[{k}]'] for k in range(4))); tr = T(atts)
 ra = roll_of(*(att[f'q[{k}]'] for k in range(4)))
-up = [i for i in range(1, len(rs)) if rs[i] > 5 and rs[i-1] <= 5]
+def step_starts(sp, t):
+    # The script's step jumps from level (under 2 deg) to exactly 10 deg and stays there for 1 s. In wind,
+    # position hold leans the drone too, and switching back to it after a step can jump the setpoint past
+    # 10 deg, so check that it really sits at 10 for the next half second
+    return [i for i in range(1, len(sp)) if sp[i-1] < 2 and 9.5 <= sp[i] <= 10.5
+            and np.all(np.abs(sp[(t >= t[i]) & (t <= t[i] + 0.5)] - 10) <= 0.5)]
+up = step_starts(rs, tr)
 for i in up[:1]:
     t0 = tr[i - 1] if rs[i] > 9 else tr[i]
     r, o, s, e = step_metrics(T(att), ra, t0, 0.0, 10.0, 0.95)
@@ -78,7 +89,7 @@ if up and rsp is not None and av is not None:
 # ---- pitch step (only when step_tests.py ran with --pitch)
 def pitch_of(q0, q1, q2, q3): return np.degrees(np.arcsin(np.clip(2*(q0*q2 - q3*q1), -1, 1)))
 ps = pitch_of(*(atts[f'q_d[{k}]'] for k in range(4))); pa = pitch_of(*(att[f'q[{k}]'] for k in range(4)))
-pup = [i for i in range(1, len(ps)) if ps[i] > 8.5 and ps[i-1] < 2]   # a jump to ~10 deg, not the tilt of position hold
+pup = step_starts(ps, tr)   # a jump to 10 deg, not the tilt of position hold
 for i in pup[:1]:
     t0 = tr[i - 1] if ps[i] > 9 else tr[i]
     r, o, s_, e = step_metrics(T(att), pa, t0, 0.0, 10.0, 0.95)
@@ -94,13 +105,61 @@ for i in pup[:1]:
         print(f'pitch rate tracking: lag {lags[int(np.argmin(err))]*1000:.0f} ms, peak actual/setpoint {y.max()/sp.max():.2f}')
 if a.plot:
     import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
-    n = 3 if pup else 2
-    fig, ax = plt.subplots(n, 1, figsize=(9, 2.6 * n + 0.8))
-    ax[0].plot(T(lp), -lp['z'], label='altitude'); ax[0].plot(tz, -zsp, '--', label='setpoint'); ax[0].set_ylabel('altitude (m)'); ax[0].legend()
-    ax[1].plot(T(att), ra, label='roll'); ax[1].plot(tr, rs, '--', label='setpoint'); ax[1].set_ylabel('roll (deg)'); ax[1].legend()
-    if up: ax[1].set_xlim(tr[up[0]] - 0.5, tr[up[0]] + 2.0); ax[1].set_ylim(-3, 14)
-    if pup:
-        ax[2].plot(T(att), pa, label='pitch'); ax[2].plot(tr, ps, '--', label='setpoint'); ax[2].set_ylabel('pitch (deg)'); ax[2].legend()
-        ax[2].set_xlim(tr[pup[0]] - 0.5, tr[pup[0]] + 2.0); ax[2].set_ylim(-3, 14)
-    ax[-1].set_xlabel('time (s)')
-    fig.tight_layout(); fig.savefig(a.plot); print('plot:', a.plot)
+
+    def series(path):
+        """What the plot needs from one log. Times are measured from each step, so two runs line up."""
+        uu = ULog(path)
+        def tp(name):
+            for d in uu.data_list:
+                if d.name == name and d.multi_id == 0: return d.data
+            return None
+        l, sp, q, qs = tp('vehicle_local_position'), tp('trajectory_setpoint'), tp('vehicle_attitude'), tp('vehicle_attitude_setpoint')
+        z = sp['position[2]']
+        j = [i for i in range(1, len(z)) if np.isfinite(z[i]) and np.isfinite(z[i-1])
+             and abs(z[i] - z[i-1]) > 0.5 and min(-z[i], -z[i-1]) > 1.5]
+        r_sp = roll_of(*(qs[f'q_d[{k}]'] for k in range(4))); p_sp = pitch_of(*(qs[f'q_d[{k}]'] for k in range(4)))
+        ru = step_starts(r_sp, T(qs))
+        pu = step_starts(p_sp, T(qs))
+        return dict(t_lp=T(l), alt=-l['z'], drift=np.hypot(l['x'], l['y']), t_sp=T(sp), alt_sp=-z,
+                    t_att=T(q), roll=roll_of(*(q[f'q[{k}]'] for k in range(4))),
+                    pitch=pitch_of(*(q[f'q[{k}]'] for k in range(4))),
+                    t_atts=T(qs), roll_sp=r_sp, pitch_sp=p_sp,
+                    t_alt=T(sp)[j[0]] if j else T(l)[0],
+                    t_roll=T(qs)[ru[0]] if ru else None, t_pitch=T(qs)[pu[0]] if pu else None)
+
+    main = series(a.log)
+    runs = ([(series(a.calm), 'no wind', '0.6', 1.2)] if a.calm else []) + [(main, a.label, 'C0', 1.6)]
+    panels = ['alt', 'roll'] + (['pitch'] if main['t_pitch'] is not None else []) + ['drift']
+    fig, ax = plt.subplots(len(panels), 1, figsize=(9, 2.5 * len(panels) + 1))
+    A = dict(zip(panels, ax))
+    for s, lab, c, w in runs:
+        A['alt'].plot(s['t_lp'] - s['t_alt'], s['alt'], color=c, lw=w, label=lab)
+        A['drift'].plot(s['t_lp'] - s['t_alt'], s['drift'], color=c, lw=w, label=lab)
+        if s['t_roll'] is not None:
+            A['roll'].plot(s['t_att'] - s['t_roll'], s['roll'], color=c, lw=w, label=lab)
+        if 'pitch' in A and s['t_pitch'] is not None:
+            A['pitch'].plot(s['t_att'] - s['t_pitch'], s['pitch'], color=c, lw=w, label=lab)
+    def angle_limits(key, t0key):
+        # At least -6..15 deg, wider if a run leans further (in strong wind it starts tilted into the wind)
+        lo, hi = -6, 15
+        for s, *_ in runs:
+            if s[t0key] is None: continue
+            m = (s['t_att'] - s[t0key] >= -0.5) & (s['t_att'] - s[t0key] <= 2.0)
+            if m.any(): lo, hi = min(lo, s[key][m].min() - 1), max(hi, s[key][m].max() + 1)
+        return lo, hi
+    A['alt'].plot(main['t_sp'] - main['t_alt'], main['alt_sp'], 'k--', lw=1, label='setpoint')
+    A['alt'].set_ylim(bottom=-0.3); A['alt'].set_ylabel('altitude (m)'); A['alt'].set_xlabel('time from the first height step (s)')
+    if main['t_roll'] is not None:
+        A['roll'].plot(main['t_atts'] - main['t_roll'], main['roll_sp'], 'k--', lw=1, label='setpoint')
+        A['roll'].set_xlim(-0.5, 2.0); A['roll'].set_ylim(*angle_limits('roll', 't_roll'))
+    A['roll'].set_ylabel('roll (deg)'); A['roll'].set_xlabel('time from the roll step (s)')
+    if 'pitch' in A:
+        A['pitch'].plot(main['t_atts'] - main['t_pitch'], main['pitch_sp'], 'k--', lw=1, label='setpoint')
+        A['pitch'].set_xlim(-0.5, 2.0); A['pitch'].set_ylim(*angle_limits('pitch', 't_pitch'))
+        A['pitch'].set_ylabel('pitch (deg)'); A['pitch'].set_xlabel('time from the pitch step (s)')
+    A['drift'].set_ylabel('off its spot (m)'); A['drift'].set_xlabel('time from the first height step (s)')
+    A['drift'].set_title('Distance from the hold point. The roll and pitch steps move it sideways on purpose; '
+                         'watch the hover parts', fontsize=9, loc='left')
+    for x in ax: x.legend(loc='upper left', fontsize=8); x.grid(alpha=0.3)
+    if a.title: fig.suptitle(a.title)
+    fig.tight_layout(); fig.savefig(a.plot, dpi=110); print('plot:', a.plot)
