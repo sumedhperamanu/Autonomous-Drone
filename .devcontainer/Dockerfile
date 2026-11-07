@@ -32,3 +32,8 @@ RUN printf "[global]\nconstraint = /etc/pip-constraints.txt\n" > /etc/pip.conf \
 
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
     && echo "source /opt/ros/jazzy/setup.bash" >> /home/ubuntu/.bashrc
+
+# SLAM (decision 0001)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ros-jazzy-rtabmap-ros \
+    && rm -rf /var/lib/apt/lists/*
