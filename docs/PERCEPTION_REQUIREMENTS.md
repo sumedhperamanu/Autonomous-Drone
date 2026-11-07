@@ -20,30 +20,25 @@ Owners: Perception & Sensing (Alex, Amartya). Day 1 deliverable (P3): mission tu
 | P-5 | Coverage | a. Forward depth only, HFOV ≥ 70°, VFOV ≥ 50°<br>b. Yaw to face direction of travel<br>c. Flight-path angle ≤ ±15°<br>d. Vertical moves only through mapped-free space<br>e. Takeoff/land at pre-checked spots | Path angle ≤ VFOV/2 − 10° margin = 25° − 10° = 15°. Forward-only replaces 270° coverage (mass/cost) | a. FOV cones in CAD<br>b. Beam/overhang worlds |
 | P-6 | Rate and latency | Depth ≥ 15 Hz, frame-to-command ≤ 150 ms | t_r ≈ 1/15 + 0.15 + control ≈ 0.3 s | `ros2 topic hz`, timestamps |
 | P-7 | Height and hold | a. Rangefinder 0.1–4 m at ≥ 20 Hz<br>b. Optical flow ≥ 20 Hz<br>c. Hover ≥ 0.3 m<br>d. Textured floor | a. h_max + 1 m = 3 + 1 = 4 m<br>c. Flow footprint w = 2h·tan 35° ≈ 0.42 m at 0.3 m | a. Rangefinder vs truth<br>b. 60 s hover drift |
+| P-8 | AprilTag | tag36h11, 18 cm black-border edge, search altitude 2.5 m, landing error ≤ 10 cm, tag pose error ≤ 5 cm at 1 m | Z_max ≈ f·s/20 px ≈ 4.1 m ≥ 3.75 m | Tag at increasing heights/angles (day 8 table) |
 | P-9 | Lighting | ≥ 200 lux, no direct sun, exposure ≤ 6 ms; global shutter + active stereo preferred | Motion blur b = f·v·t_exp/Z ≤ 3 px → t_exp ≈ 6.6 ms | Lighting variation tests |
-| P-10 | Sensor budget | ≤ 120 g, ≤ 5 W (peak <= 5.5 W), regulator sized with at least 2x headroom (excluding companion computer) | 950 g AUW | Mass budget |
-| P-11 | Fault flags | a. Depth older than 0.5 s → hover<br>b. Flow/rangefinder invalid → land | Safety: v·0.5 s + d_stop = 2.26 m < 3 m | Inject dropout in sim |
-| P-12 | Flying room | Walls: posters, printed patterns or coloured tape at camera height; busy and high-contrast, not repeating. Floor: textured, with a mat or tape if plain. Lighting per P-9. | SLAM and stereo need real features; optical flow needs floor texture | Check the room before flying |
-
-**NOTES**
-- P-8 (AprilTag) was removed. The other IDs keep their numbers
-- Check the regulator: P1’s pick is a 5 A BEC for the Pi. If the camera is powered through the Pi, that BEC also has to cover the Pi’s own draw
-- Measure it: when the camera arrives, check the real draw with a USB power meter
-- If SLAM tracking lost then hold on flow and rangefinder, then land
-
+| P-10 | Sensor budget | ≤ 120 g, ≤ 5 W (excluding companion computer) | 950 g AUW | Mass budget |
+| P-11 | Fault flags | a. Depth older than 0.5 s → hover<br>b. Flow/rangefinder invalid → land<br>c. Tag lost > 3 s → re-search | Safety: v·0.5 s + d_stop = 2.26 m < 3 m | Inject dropout in sim |
 
 ## What must be detected, per mission phase
 
 | Mission phase | What the drone must know | What must be detected |
 |---------------|--------------------------|-----------------------|
 | Takeoff | Height above ground, no obstacle overhead | Ground distance |
+| Search | Target visibility | Marker or pad, from search height |
 | Transit | Obstacles ahead | Obstacles |
-| Landing | Height above ground | Ground distance |
+| Approach | Exactly where the target is relative to the drone | Marker pose, close range |
+| Landing | Height, and whether still centered | Marker + ground |
 
 ## Perception pipeline
 
 1. **Capture:** grab images, depth frames, or rangefinder readings, each with an accurate timestamp.
 2. **Clean up:** undistort using the camera calibration, filter noise, crop out the drone's own legs and props.
-3. **Detect:** find depth points that are too close.
-4. **Estimate:** compute each obstacle's distance and direction from the camera.
+3. **Detect:** find the AprilTag in the image, or depth points that are too close.
+4. **Estimate:** compute position and size; the tag's pose relative to the camera is (R_ct, t_ct).
 5. **Transform:** convert camera-frame results into the world frame so the planner can use them.
