@@ -1,8 +1,13 @@
 # CAD skeleton
 
-`skeleton.step` holds 32 parts plus the field-of-view solids. `skeleton.png` shows the labelled top, side and front views with the parts table. `skeleton.py` builds both, checks every part against every other part and view, and works out the mass and balance.
+The drone laid out as in P1's dodge analysis (Nov 7 2026): the OAK-D Lite under the nose, two side cameras and the STL-27L lidar on a mast, the Jetson on a top deck and the battery underneath.
 
-`render_3d.py` makes the 3D versions: `skeleton_3d.png` (views from above and below) and `skeleton_3d.html` (rotate it in a browser).
+- `skeleton.step`: 38 parts plus the sensor views as solids.
+- `skeleton.png`: labelled top, side and front views with the parts table and the check findings.
+- `skeleton_3d.png` and `skeleton_3d.html`: 3D versions (views from above and below, and one you can rotate in a browser).
+- `skeleton.py` builds the model, checks every part against every other part and every sensor view, and works out mass and balance. `render_3d.py` makes the 3D files.
+
+Lengths are mm, X forward, Y left, Z up, with Z = 0 at the prop plane as in P1's layout. The sim's `base_link` sits 36 mm below the prop plane, so add 36 mm to Z for transforms from `base_link`.
 
 ## View the 3D model
 
@@ -40,9 +45,9 @@ Once this branch is merged, use `main` in place of `p3/interface-agreement`.
 | Scroll | Zoom |
 | Right-drag | Move the view |
 | Hover over a part | See its name, mass and where the number came from |
-| Use the checkboxes | Show or hide the camera view, flow view, range beam, props and legs |
+| Use the checkboxes | Show or hide each sensor view, the props and the legs |
 
-Hide the props and camera view to see the parts in the middle. The camera view is drawn only 170 mm long so it doesn't cover the drone; the real camera sees 5 m or more.
+Hide the props and views to see the parts in the middle. Camera views are drawn only 200 mm long so they don't cover the drone; the real cameras see several metres.
 
 If the page shows no model, check your internet connection. Offline, use `skeleton_3d.png` instead.
 
@@ -54,48 +59,37 @@ python3 skeleton.py
 python3 render_3d.py
 ```
 
-Lengths are mm in `base_link`: X forward, Y left, Z up, with Z = 0 at the top of the arms.
-
-The parts are simple blocks, so the STEP file is a layout reference for the Day 5 models, not the final design.
-
 ## Current result
 
 | Check | Result |
 | --- | --- |
-| Part overlaps and parts in a view | 0 problems |
-| Total mass | 1136 g, with no margin added |
-| Centre of mass | x -0.2, y 0, z 39.7 mm, which is 3.7 mm above the prop plane |
-| Battery position | x -8 mm, set to balance the drone |
-| Inertia | 0.0058, 0.0071, 0.0087 kg m^2 (roll, pitch, yaw) |
-| On the ground | Flow sensor 83 mm up (80 mm minimum), camera clears by 42 mm |
+| Total mass | 1,380 g (P1: about 1,383 g) |
+| Centre of mass | 3 mm aft, 15.6 mm below the prop plane (P1: 4 mm aft, 5 mm below) |
+| Inertia | 0.0069, 0.0086, 0.0097 kg m^2 (roll, pitch, yaw) |
+| Flow sensor on the ground | 90 mm up (80 mm minimum) |
+| Parts overlapping | None, after the two moves below |
 
-P1's model uses 0.0040, 0.0054, 0.0074 kg m^2 at 1.32 kg, on a smaller rotor spacing. Don't copy these numbers into the sim until the real parts are modelled on Day 7.
+The centre of mass sits lower than P1's because the battery had to move down (below).
+
+## What the checks found
+
+| Finding | What it means |
+| --- | --- |
+| The left side camera sees the rear-left prop, and the right sees the rear-right, about 31% of each disc | The props sit in the lower part of each side camera's view. Mask them in software, or tilt the cameras up more, and check on the real mount. The sim shows the same |
+| The OAK-D Lite's top edge just clips both front props, about 3% of each disc | Small; confirm with the real mount and the 8° tilt |
+| P1's battery height (centre 33 mm below the props) sits inside the frame | With motors about 20 mm tall, the battery's top would cut through the bottom plate and arms. It's placed just under the frame here, centre 46 mm below |
+| P1's MTF-01P height (22 mm below the props) sits inside the rear-right arm | It's placed just under the arm here, 33 mm below the props |
+
+The battery and MTF-01P findings depend on my frame estimates, so check them against the real frame before moving anything.
+
+The side cameras also see the lidar body at the top of their view in the sim, where they sit under it. This model's checks don't catch that, because they measure from the front of each camera.
 
 ## Check these first
 
-The parts table in `skeleton.png` marks where each number came from. These estimates matter most:
+The parts table in `skeleton.png` marks where each number came from: `P1` for P1's layout, `listing` for a seller's page, `estimate` for my guess.
 
-- Frame: plate size (130 x 50 mm), arm size, 30 mm standoffs, prop height (35 mm above the arms). We found no V5 7" CAD files. The [source_one repo](https://github.com/tbs-trappy/source_one) has a 7" deadcat DXF, but it's labelled V6.
-- Motor positions. They assume a square X at 320 mm. The frame is listed as a deadcat, so its front motors may sit further out, which would give the camera more room.
-- Layout: the Pi above the top plate and the battery above the Pi are proposals, along with the leg positions. Stacking them raises the centre of mass.
-- BEC, RC receiver, legs, bracket and the 60 g for wires and straps. The wires are counted for mass only, not modelled.
-- Sensor sizes and view angles come from retailer listings.
-
-The checks add a 3 deg view margin and 10 mm of body clearance around the props.
-
-## Where the OAK-D Lite can go
-
-Each row is the smallest height offset that works at that forward position.
-
-| Front face x | Centre z | Past plate front |
-| --- | --- | --- |
-| 70 | -50 | 5 |
-| 95 | -35 | 30 |
-| 120 | -20 | 55 |
-| 145 | 0 | 80 |
-
-The skeleton uses the first row: it needs the shortest bracket, which helps with vibration, but the camera hangs below the plate. The last row sits level with the arms, but needs an 80 mm bracket out the front.
-
-## Landing legs
-
-The camera and MTF-01 sit under the frame, so the drone needs legs. Legs reaching 100 mm below the arms clear the camera by 42 mm and keep flow just above its 80 mm minimum, with only 3 mm to spare.
+- Frame: motor height (20 mm), plate sizes, arm size and the top deck height. We found no V5 7" CAD files. The [source_one repo](https://github.com/tbs-trappy/source_one) has a 7" deadcat DXF, but it's labelled V6.
+- Motor positions. They assume a square X at 320 mm. The frame is listed as a deadcat, so its front motors may sit further out.
+- Masses of the Jetson (150 g), mast, legs, SiK radio, BEC and the 60 g of wires and straps, which are counted for mass only.
+- Leg positions (85 mm out along each diagonal). Legs at 60 mm sat in the flow sensor's view.
+- Sensor sizes and view angles. The side cameras' 160° x 120° is an estimate from their 200° diagonal; measure it.
