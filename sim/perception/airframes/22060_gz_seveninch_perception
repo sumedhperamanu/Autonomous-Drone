@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# @name Gazebo 7-inch quad on 4S with the perception sensors (OAK-D Lite, side cameras, STL-27L, MTF-01P)
+#
+# @type Quadrotor
+#
+# P1's 4S airframe (22054) with the sensor layout from P1's dodge analysis.
+
+. ${R}etc/init.d-posix/airframes/22054_gz_seveninch_4s
+
+# Set after 22054, which picks its own model
+PX4_SIM_MODEL=seveninch_perception
+
+# GPS-denied by design: docs/PERCEPTION_REQUIREMENTS.md assumption 1. GPS is optional on the real drone.
+param set-default SYS_HAS_GPS 0
+param set-default SIM_GPS_USED 0
+param set-default EKF2_GPS_CTRL 0
+
+# Assumptions 2 and 4: v_max 1.5 m/s, 1.0 m/s nominal, braking 2 m/s^2.
+# Dodges go faster than this; the offboard node exempts them (P-13).
+param set-default MPC_XY_VEL_MAX 1.5
+param set-default MPC_XY_CRUISE 1.0
+param set-default MPC_VEL_MANUAL 1.5
+param set-default MPC_ACC_HOR 2.0
