@@ -1,5 +1,5 @@
 # Perception topics copied from Gazebo to ROS 2.
-# Range path assumes the default world and PX4 instance 0.
+# The scan and range paths assume the default world and PX4 instance 0. For another world, see README.md.
 - ros_topic_name: "/clock"
   gz_topic_name: "/clock"
   ros_type_name: "rosgraph_msgs/msg/Clock"
@@ -20,11 +20,6 @@
   ros_type_name: "sensor_msgs/msg/CameraInfo"
   gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
-- ros_topic_name: "/range/scan"
-  gz_topic_name: "/world/default/model/x500_perception_0/link/lidar_sensor_link/sensor/lidar/scan"
-  ros_type_name: "sensor_msgs/msg/LaserScan"
-  gz_type_name: "gz.msgs.LaserScan"
-  direction: GZ_TO_ROS
 - ros_topic_name: "/oakd/left/image"
   gz_topic_name: "/oakd/left/image"
   ros_type_name: "sensor_msgs/msg/Image"
@@ -35,8 +30,38 @@
   ros_type_name: "sensor_msgs/msg/CameraInfo"
   gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
+- ros_topic_name: "/oakd/rgb/image"
+  gz_topic_name: "/oakd/rgb/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/oakd/rgb/camera_info"
+  gz_topic_name: "/oakd/rgb/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
 - ros_topic_name: "/oakd/imu"
   gz_topic_name: "/oakd/imu"
   ros_type_name: "sensor_msgs/msg/Imu"
   gz_type_name: "gz.msgs.IMU"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/side_left/image"
+  gz_topic_name: "/side_left/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/side_right/image"
+  gz_topic_name: "/side_right/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/scan"
+  gz_topic_name: "/world/default/model/seveninch_perception_0/link/link/sensor/lidar_2d_v2/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/range/scan"
+  gz_topic_name: "/world/default/model/seveninch_perception_0/link/lidar_sensor_link/sensor/lidar/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
   direction: GZ_TO_ROS

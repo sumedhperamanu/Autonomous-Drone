@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version='1.9'>
+  <!--
+    P1's 7" drone with the perception sensors from P1's dodge analysis (Nov 7 2026).
+    Positions follow P1's layout: P1 gives heights from the prop plane, and the prop plane
+    sits 0.036 m above base_link here, so every z below is P1's height + 0.036.
+    Sensor links carry 1 g each: the body mass in seveninch_base already covers the payload.
+  -->
+  <model name='seveninch_perception'>
+    <self_collide>false</self_collide>
+    <include merge='true'>
+      <uri>model://seveninch</uri>
+    </include>
+
+    <!-- OAK-D Lite under the nose, forward, tilted up 8 deg. Stereo depth, left mono, colour and IMU. -->
+    <link name="oakd_link">
+      <pose relative_to="base_link">0.075 0 -0.014 0 -0.1396 0</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
+      </inertial>
+      <visual name="oakd_visual">
+        <pose>-0.00358 0.03 -0.014 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://OakD-Lite/meshes/OakDLite.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <sensor name="oakd_depth" type="depth_camera">
+        <gz_frame_id>oakd_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>1.274</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R_FLOAT32</format>
+          </image>
+          <clip>
+            <near>0.2</near>
+            <far>12</far>
+          </clip>
+          <!-- The datasheet's error at 3 m (under 2%). Gazebo applies it at every range. -->
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.06</stddev>
+          </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <visualize>true</visualize>
+        <topic>depth_camera</topic>
+      </sensor>
+      <sensor name="oakd_left" type="camera">
+        <gz_frame_id>oakd_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>1.274</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>L8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <topic>oakd/left/image</topic>
+      </sensor>
+      <!-- Colour camera for person detection (P-14). The real IMX214 is 4K; 640 x 480 keeps the sim fast. -->
+      <sensor name="oakd_rgb" type="camera">
+        <gz_frame_id>oakd_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>1.204</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <topic>oakd/rgb/image</topic>
+      </sensor>
+      <sensor name="oakd_imu" type="imu">
+        <gz_frame_id>oakd_link</gz_frame_id>
+        <always_on>1</always_on>
+        <update_rate>250</update_rate>
+        <topic>oakd/imu</topic>
+      </sensor>
+    </link>
+    <joint name="oakd_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>oakd_link</child>
+    </joint>
+
+    <!--
+      Two IMX219-200 side cameras on the mast, 15 deg rearward and tilted up 25 deg (P-13 looming).
+      The real cameras run 1640 x 1232. The sim uses 820 x 616 because these wide-angle cameras slow
+      Gazebo down a lot; set 1640 x 1232 here when testing detection range.
+    -->
+    <link name="side_left_link">
+      <pose relative_to="base_link">0 0.016 0.136 0 -0.4363 1.8326</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
+      </inertial>
+      <visual name="side_left_visual">
+        <geometry><box><size>0.012 0.025 0.025</size></box></geometry>
+        <material><ambient>0.05 0.35 0.35 1</ambient><diffuse>0.05 0.35 0.35 1</diffuse></material>
+      </visual>
+      <sensor name="side_left" type="wideanglecamera">
+        <gz_frame_id>side_left_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>2.7925</horizontal_fov>
+          <image>
+            <width>820</width>
+            <height>616</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>100</far>
+          </clip>
+          <lens>
+            <type>equidistant</type>
+            <scale_to_hfov>true</scale_to_hfov>
+            <cutoff_angle>1.5708</cutoff_angle>
+            <env_texture_size>256</env_texture_size>
+          </lens>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <topic>side_left/image</topic>
+      </sensor>
+    </link>
+    <joint name="side_left_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>side_left_link</child>
+    </joint>
+
+    <link name="side_right_link">
+      <pose relative_to="base_link">0 -0.016 0.136 0 -0.4363 -1.8326</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
+      </inertial>
+      <visual name="side_right_visual">
+        <geometry><box><size>0.012 0.025 0.025</size></box></geometry>
+        <material><ambient>0.05 0.35 0.35 1</ambient><diffuse>0.05 0.35 0.35 1</diffuse></material>
+      </visual>
+      <sensor name="side_right" type="wideanglecamera">
+        <gz_frame_id>side_right_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>2.7925</horizontal_fov>
+          <image>
+            <width>820</width>
+            <height>616</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>100</far>
+          </clip>
+          <lens>
+            <type>equidistant</type>
+            <scale_to_hfov>true</scale_to_hfov>
+            <cutoff_angle>1.5708</cutoff_angle>
+            <env_texture_size>256</env_texture_size>
+          </lens>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <topic>side_right/image</topic>
+      </sensor>
+    </link>
+    <joint name="side_right_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>side_right_link</child>
+    </joint>
+
+    <!--
+      STL-27L 2D lidar on top of the mast, scan plane 138 mm above the props: 360 deg, 0.167 deg
+      apart (2160 points per turn), 10 Hz, 25 m. PX4 reads this exact link and sensor name for
+      obstacle_distance, so they match PX4's lidar_2d_v2 model.
+    -->
+    <link name="link">
+      <pose relative_to="base_link">0 0 0.174 0 0 0</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
+      </inertial>
+      <!-- Body sized like the LD19 (about 39 x 39 x 34 mm), which P1 says the STL-27L matches. -->
+      <visual name="stl27l_visual">
+        <pose>0 0 -0.009 0 0 0</pose>
+        <geometry><cylinder><radius>0.0195</radius><length>0.0335</length></cylinder></geometry>
+        <material><ambient>0.55 0.35 0.1 1</ambient><diffuse>0.55 0.35 0.1 1</diffuse></material>
+      </visual>
+      <sensor name="lidar_2d_v2" type="gpu_lidar">
+        <gz_frame_id>link</gz_frame_id>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>2160</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.03</min>
+            <max>25</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </ray>
+        <always_on>1</always_on>
+        <update_rate>10</update_rate>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+    <joint name="lidar_2d_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>link</child>
+    </joint>
+
+    <!-- MTF-01P, 50 mm aft and 42 mm right, 22 mm below the props: downward flow and a 0.02 to 12 m range beam.
+         PX4 reads these link and sensor names. -->
+    <include merge='true'>
+      <uri>model://optical_flow</uri>
+      <pose relative_to="base_link">-0.05 -0.042 0.014 0 0 0</pose>
+    </include>
+    <joint name="optical_flow_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>flow_link</child>
+    </joint>
+    <link name="lidar_sensor_link">
+      <pose relative_to="base_link">-0.05 -0.042 0.014 0 1.5707 0</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
+      </inertial>
+      <sensor name="lidar" type="gpu_lidar">
+        <gz_frame_id>lidar_sensor_link</gz_frame_id>
+        <pose>0 0 0 3.14 0 0</pose>
+        <update_rate>50</update_rate>
+        <ray>
+          <scan>
+            <horizontal><samples>1</samples><resolution>1</resolution><min_angle>0</min_angle><max_angle>0</max_angle></horizontal>
+            <vertical><samples>1</samples><resolution>1</resolution><min_angle>0</min_angle><max_angle>0</max_angle></vertical>
+          </scan>
+          <range>
+            <min>0.02</min>
+            <max>12.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </ray>
+        <always_on>1</always_on>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+    <joint name="lidar_sensor_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>lidar_sensor_link</child>
+    </joint>
+  </model>
+</sdf>

@@ -1,0 +1,83 @@
+# REAL DRONE first-flight file: 7" (4S 5000 mAh). MicoAir743 V2 + MicoAir 55A AM32. PX4 v1.17, 2026-11-04.
+# This board keeps its parameters on the microSD card. Never fly without the card.
+# Vehicle-Id Component-Id Name Value Type
+# Ports (port map: params/README.md)
+# MAV_0_CONFIG: board default puts MAVLink on TELEM1, which would clash with ROS 2 on TELEM1
+1	1	MAV_0_CONFIG	0	6
+# UXRCE_DDS_CFG: ROS 2 link to the Pi on TELEM1
+1	1	UXRCE_DDS_CFG	101	6
+# SER_TEL1_BAUD: default is 57600, too slow for ROS 2 topics
+1	1	SER_TEL1_BAUD	921600	6
+# MAV_1_CONFIG: MTF-01P flow + range sensor on TELEM2 (MAVLink)
+1	1	MAV_1_CONFIG	102	6
+# SER_TEL2_BAUD: the MTF-01P's default baud
+1	1	SER_TEL2_BAUD	115200	6
+# MAV_2_CONFIG: board default MAVLink on TELEM4 off (TELEM4 is wired to the onboard Bluetooth)
+1	1	MAV_2_CONFIG	0	6
+# MSP_OSD_CONFIG: board default OSD on GPS2 off
+1	1	MSP_OSD_CONFIG	0	6
+# Height and position sources: no GPS in phase 1. PX4's default height reference is GPS (EKF2_HGT_REF 1).
+# EKF2_HGT_REF: barometer is the height reference; the rangefinder helps near the ground (EKF2_RNG_CTRL 1, the default)
+1	1	EKF2_HGT_REF	0	6
+# EKF2_GPS_CTRL: no GPS in phase 1. Set it back to 7 when the phase 2 GPS goes on
+1	1	EKF2_GPS_CTRL	0	6
+# Flow is on by default (EKF2_OF_CTRL 1). Once the MTF-01 is mounted, set EKF2_OF_POS_X/Y/Z and EKF2_RNG_POS_X/Y/Z to its position.
+# Battery (board defaults assume 4S, 40 A/V and 3.2 V empty)
+# BAT1_N_CELLS: 4S pack
+1	1	BAT1_N_CELLS	4	6
+# BAT1_V_EMPTY: board default 3.2 V makes the % read too high under load
+1	1	BAT1_V_EMPTY	3.5	9
+# BAT1_V_CHARGED: standard LiPo, no LiHV packs
+1	1	BAT1_V_CHARGED	4.2	9
+# BAT1_CAPACITY: mAh
+1	1	BAT1_CAPACITY	5000	9
+# BAT1_A_PER_V: START VALUE: 1000 / 12.75 mV per A. Calibrate: compare mAh put back by the charger with mAh PX4 logged
+1	1	BAT1_A_PER_V	78.4	9
+# BAT1_V_DIV: set it in QGC Power setup by matching a multimeter reading. Not set here on purpose.
+# Gains: start at the board's own defaults, then tune on the real drone (autotune or by hand).
+# The sim gains are NOT copied here: the real motors, props and frame flex differ.
+# MC_ROLLRATE_K: board default
+1	1	MC_ROLLRATE_K	0.35	9
+# MC_PITCHRATE_K: board default
+1	1	MC_PITCHRATE_K	0.4	9
+# Motion limits from P3's perception requirements (docs/PERCEPTION_REQUIREMENTS.md)
+# MPC_XY_VEL_MAX: v_max 1.5 m/s
+1	1	MPC_XY_VEL_MAX	1.5	9
+# MPC_XY_CRUISE: normal autonomous speed 1.0 m/s. Below PX4's listed minimum of 3, so QGC flags it: expected
+1	1	MPC_XY_CRUISE	1.0	9
+# MPC_VEL_MANUAL: same cap when a person flies in Position mode. Also below the listed minimum of 3: expected
+1	1	MPC_VEL_MANUAL	1.5	9
+# MPC_ACC_HOR: braking 2 m/s^2, the number P3 used for stopping distance
+1	1	MPC_ACC_HOR	2.0	9
+# Failsafes. Team spec: return-home and low-battery failsafes.
+# Return needs a global position. With no GPS PX4 cannot run it and drops to Land by itself
+# (commander/failsafe/framework.cpp: case RTL falls through to case Land).
+# NAV_RCL_ACT: RC lost -> Return (Land when there is no GPS)
+1	1	NAV_RCL_ACT	2	6
+# COM_LOW_BAT_ACT: Return at critical battery, land at emergency
+1	1	COM_LOW_BAT_ACT	3	6
+# RTL_RETURN_ALT: default is 60 m. Indoors that flies into the ceiling. P3's max height is 3 m
+1	1	RTL_RETURN_ALT	2.5	9
+# RTL_DESCEND_ALT: default is 30 m, same reason
+1	1	RTL_DESCEND_ALT	2.0	9
+# BAT_LOW_THR: warning at 25%
+1	1	BAT_LOW_THR	0.25	9
+# BAT_CRIT_THR: critical (Return) at 15%
+1	1	BAT_CRIT_THR	0.15	9
+# BAT_EMERGEN_THR: emergency (Land) at 7%
+1	1	BAT_EMERGEN_THR	0.07	9
+# COM_OF_LOSS_T: offboard link timeout: no setpoints from the ROS 2 node for 0.5 s counts as offboard lost (PX4 default 1 s).
+#   This is NOT P3's P-11a (depth older than 0.5 s -> hover). PX4 never sees the depth data, so if the node keeps
+#   sending while depth is stale, PX4 can't tell. P-11a has to live in P2's offboard node
+1	1	COM_OF_LOSS_T	0.5	9
+# COM_OBL_RC_ACT: offboard lost -> Land. In offboard, a lost position estimate also counts as offboard lost
+#   (HealthAndArmingChecks/checks/offboardCheck.cpp), so this also lands on flow loss (P3's P-11b),
+#   but only while the node sends position or velocity setpoints: offboardCheck.cpp only checks the estimate that
+#   setpoint type needs. With attitude or rate setpoints a flow loss is not caught here.
+#   With no position PX4 falls through to Descend (failsafe/framework.cpp). The pilot can take over with the mode switch
+1	1	COM_OBL_RC_ACT	4	6
+# EKF2_NOAID_TOUT: flow drone: declare position lost after 1 s without flow, not 5 s (in microseconds)
+1	1	EKF2_NOAID_TOUT	1000000	6
+# NAV_DLL_ACT: ground-station link lost: do nothing. Wi-Fi to QGC drops often indoors; the RC link is the safety link
+1	1	NAV_DLL_ACT	0	6
+# COM_POS_FS_EPH (default 5 m) is left alone until the Day 10 flow-loss test: 1 m may trip on normal flow drift.
