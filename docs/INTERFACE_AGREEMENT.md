@@ -1,6 +1,22 @@
 # Interface Agreement
 
-Draft, Nov 9 2026. Sensors match `docs/DECISION_LOG.md`. Needs P2's topics and final CAD positions.
+Draft, Nov 10 2026. Sensors match `docs/DECISION_LOG.md`. Needs P2's topics and final CAD positions.
+
+## Connections
+
+From P1's hardware decision log.
+
+| Device | Connects to | Link |
+|---|---|---|
+| OAK-D Lite | Jetson USB 3 | ROS 2 driver on the Jetson |
+| 2 x IMX219-200 | Jetson CSI ports (22-pin to 15-pin cables) | Both CSI ports used, so any further camera must be USB |
+| STL-27L | Jetson USB, through a UART adapter | ROS 2 driver on the Jetson |
+| Flight controller TELEM1 | Jetson 40-pin header UART | ROS 2 over uXRCE-DDS, 921600 baud |
+| Flight controller USB | Jetson | MAVLink forwarded to QGC |
+| MTF-01P | Flight controller TELEM2 | MAVLink, 115200 baud |
+| ELRS receiver | Flight controller RC | |
+| GPS (optional) | Flight controller GPS1 | |
+| SiK radio | Flight controller URT6 / TELEM3 | Keep one spare port for the optional upward rangefinder |
 
 ## Frames
 
@@ -34,7 +50,6 @@ Sim rates were measured on Nov 9 2026, in sim time from message timestamps, on `
 | `/depth_camera/camera_info` | `sensor_msgs/CameraInfo` | 30 Hz | P3 |
 | `/oakd/left/image` | `sensor_msgs/Image` (mono8, 640 x 480) | 30 Hz | P3 |
 | `/oakd/left/camera_info` | `sensor_msgs/CameraInfo` (fx 432.5 px) | 30 Hz | P3 |
-| `/oakd/rgb/image` | `sensor_msgs/Image` (rgb8, 640 x 480 in sim) | 30 Hz | P3 |
 | `/oakd/imu` | `sensor_msgs/Imu` | 250 Hz | P3 |
 | `/side_left/image`, `/side_right/image` | `sensor_msgs/Image` (rgb8, 820 x 616 in sim, 1640 x 1232 real) | 30 Hz | P3 |
 | `/scan` | `sensor_msgs/LaserScan` (2160 points, 0.167° apart) | 10 Hz | P3 |
@@ -43,14 +58,13 @@ Sim rates were measured on Nov 9 2026, in sim time from message timestamps, on `
 
 QoS: subscribe to the camera topics with reliable. Best effort dropped depth from 30 Hz to about 4.5 Hz. Subscribe to `/fmu/out` topics with best effort.
 
-On the real drone, the MTF-01P connects to PX4 over UART, so flow and range don't go through ROS 2. PX4 also reads the lidar directly as `obstacle_distance` (72 sectors of 5°).
+On the real drone, the MTF-01P connects to PX4 over UART, so flow and range don't go through ROS 2. In the sim, PX4 also reads the lidar directly as `obstacle_distance` (72 sectors of 5°); on the real drone the lidar connects to the Jetson.
 
 ## Perception outputs (proposed)
 
 | Topic | Type | Rate | Owner |
 |---|---|---|---|
 | `/perception/obstacles` | Tracked obstacles: position, velocity, size and covariance, in `odom`. Message type to agree; nothing standard carries velocity | ≥ 10 Hz | P3 |
-| `/perception/people` | `vision_msgs/Detection3DArray`, the tracked person's ID in `results` | ≥ 10 Hz | P3 |
 
 ## PX4 and SLAM topics
 

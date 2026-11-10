@@ -1,4 +1,4 @@
-"""CAD skeleton of the 7" drone in P1's layout (dodge analysis, Nov 7 2026), with mass estimates and view solids.
+"""CAD skeleton of the 7" drone in P1's layout (hardware decision log Nov 6, dodge analysis Nov 7 2026).
 
 Places every major part where P1's layout puts it, then checks every part against every other part and
 against every sensor's view with solid intersections, and works out mass and balance. Writes skeleton.step
@@ -37,7 +37,7 @@ LEG_BOTTOM = -130.0
 # P1 puts the battery centre 33 mm and the MTF-01P 22 mm below the props. With ~20 mm tall motors both
 # would sit inside the frame, so they go just below it here, and main() reports the difference.
 PLATE_BOTTOM = ARM_TOP - 6.0 - 2.5
-BATTERY_SIZE = (155.0, 48.0, 35.0)
+BATTERY_SIZE = (138.0, 47.0, 48.0)
 BATTERY_Z_P1, MTF_Z_P1 = -33.0, -22.0
 BATTERY_Z = min(BATTERY_Z_P1, PLATE_BOTTOM - BATTERY_SIZE[2] / 2)
 MTF_SIZE = (29.3, 17.0, 14.5)
@@ -168,9 +168,9 @@ def build_parts():
     add('deck_plate', 'box', (130.0, 80.0, 2.0), (0, 0, DECK_Z + 1.0), 20.0, SRC_EST, dark)
     add('esc', 'box', (44.0, 43.5, 5.2), (0, 0, -14.0), 13.5, SRC_LIST, 'tab:red')
     add('flight_controller', 'box', (36.0, 36.0, 8.0), (0, 0, 3.0), 10.0, SRC_P1, 'tab:purple')
-    add('jetson', 'box', (100.0, 79.0, 30.0), (0, 0, 38.0), 150.0, SRC_P1, '0.2')
+    add('jetson', 'box', (100.0, 79.0, 30.0), (0, 0, 38.0), 176.0, SRC_P1, '0.2')
     add('mast', 'cyl', (6.0, 121.0 - 53.0), (0, 0, (121.0 + 53.0) / 2), 15.0, SRC_EST, dark)
-    add('stl27l', 'cyl', (19.5, 34.0), (0, 0, LIDAR_Z), 47.0, SRC_P1, '#8c5a1a')
+    add('stl27l', 'cyl', (19.5, 34.0), (0, 0, LIDAR_Z), 45.0, SRC_P1, '#8c5a1a')
     for side, sy, yaw in (('left', 1, 90.0 + SIDE_BACK), ('right', -1, -90.0 - SIDE_BACK)):
         add(f'side_cam_{side}', 'box', (12.0, 25.0, 25.0), (0, sy * 16.0, 100.0), 5.0, SRC_P1, teal, yaw=yaw)
     add('oakd_lite', 'box', (17.5, 91.0, 28.0), (75.0, 0, -50.0), 61.0, SRC_P1, teal)
