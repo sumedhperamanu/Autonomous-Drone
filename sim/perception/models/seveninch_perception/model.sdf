@@ -12,7 +12,7 @@
       <uri>model://seveninch</uri>
     </include>
 
-    <!-- OAK-D Lite under the nose, forward, tilted up 8 deg. Stereo depth, left mono, colour and IMU. -->
+    <!-- OAK-D Lite under the nose, forward, tilted up 8 deg. Stereo depth, left mono and IMU; the colour camera isn't used. -->
     <link name="oakd_link">
       <pose relative_to="base_link">0.075 0 -0.014 0 -0.1396 0</pose>
       <inertial>
@@ -70,25 +70,6 @@
         <always_on>1</always_on>
         <update_rate>30</update_rate>
         <topic>oakd/left/image</topic>
-      </sensor>
-      <!-- Colour camera for person detection (P-14). The real IMX214 is 4K; 640 x 480 keeps the sim fast. -->
-      <sensor name="oakd_rgb" type="camera">
-        <gz_frame_id>oakd_link</gz_frame_id>
-        <camera>
-          <horizontal_fov>1.204</horizontal_fov>
-          <image>
-            <width>640</width>
-            <height>480</height>
-            <format>R8G8B8</format>
-          </image>
-          <clip>
-            <near>0.1</near>
-            <far>100</far>
-          </clip>
-        </camera>
-        <always_on>1</always_on>
-        <update_rate>30</update_rate>
-        <topic>oakd/rgb/image</topic>
       </sensor>
       <sensor name="oakd_imu" type="imu">
         <gz_frame_id>oakd_link</gz_frame_id>

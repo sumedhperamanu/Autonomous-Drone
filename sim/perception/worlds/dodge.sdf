@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Moving-obstacle test world for P-13 and P-14. Same physics and lighting as PX4's default world,
+  Moving-obstacle test world for P-13. Same physics and lighting as PX4's default world,
   plus objects you can send at the drone:
     ball_7cm, ball_20cm   balls from the P-13 table
-    person                a 0.5 m wide, 1.7 m tall stand-in (a detector won't see it as a person)
+    walker                a 0.5 m wide, 1.7 m tall block, about the size of a person walking past
   Each one is moved with its own velocity topic, for example:
     gz topic -t /model/ball_7cm/cmd_vel -m gz.msgs.Twist -p 'linear: {x: -2.0}'
   The velocity holds until you send a new one, so send 'linear: {x: 0}' to stop it.
@@ -79,8 +79,8 @@
       <plugin filename="gz-sim-velocity-control-system" name="gz::sim::systems::VelocityControl"/>
     </model>
 
-    <!-- Person stand-in, 8 m ahead and 3 m to the right, standing on the ground. -->
-    <model name="person">
+    <!-- Person-sized obstacle, 8 m ahead and 3 m to the right, standing on the ground. -->
+    <model name="walker">
       <pose>8 -3 0.85 0 0 0</pose>
       <link name="link">
         <gravity>false</gravity>

@@ -11,7 +11,7 @@
 # Set after 22054, which picks its own model
 PX4_SIM_MODEL=seveninch_perception
 
-# GPS-denied indoors: docs/PERCEPTION_REQUIREMENTS.md assumption 1. The real drone carries GPS for outdoor use.
+# GPS-denied by design: docs/PERCEPTION_REQUIREMENTS.md assumption 1. GPS is optional on the real drone.
 param set-default SYS_HAS_GPS 0
 param set-default SIM_GPS_USED 0
 param set-default EKF2_GPS_CTRL 0
