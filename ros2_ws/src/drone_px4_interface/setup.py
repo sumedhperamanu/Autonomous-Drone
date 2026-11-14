@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'odom_reader = drone_px4_interface.odom_reader:main'
+            'odom_reader = drone_px4_interface.odom_reader:main',
+            'offboard_takeoff = drone_px4_interface.offboard_takeoff:main'
         ],
     },
 )
