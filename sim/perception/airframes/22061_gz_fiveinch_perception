@@ -1,17 +1,16 @@
 #!/bin/sh
 #
-# @name Gazebo 7-inch quad on 4S with the perception sensors (OAK-D Lite, side cameras, STL-27L, MTF-01P)
+# @name Gazebo 5-inch quad on 6S with the perception sensors (OAK-D Lite, STL-27L, MTF-01P)
 #
 # @type Quadrotor
 #
-# P1's 4S airframe (22054) with the sensor layout from P1's dodge analysis.
+# P1's 5-inch airframe (22050) with the sensor layout from cad/skeleton.py.
 
-. ${R}etc/init.d-posix/airframes/22054_gz_seveninch_4s
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=fiveinch_perception}
 
-# Set after 22054, which picks its own model
-PX4_SIM_MODEL=seveninch_perception
+. ${R}etc/init.d-posix/airframes/22050_gz_fiveinch
 
-# GPS-denied by design: docs/PERCEPTION_REQUIREMENTS.md assumption 1. GPS is optional on the real drone.
+# GPS-denied by design: docs/PERCEPTION_REQUIREMENTS.md assumption 1. GPS is a phase 2 option.
 param set-default SYS_HAS_GPS 0
 param set-default SIM_GPS_USED 0
 param set-default EKF2_GPS_CTRL 0

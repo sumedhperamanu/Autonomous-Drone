@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sdf version='1.9'>
   <!--
-    P1's 7" drone with the perception sensors from P1's dodge analysis (Nov 7 2026).
-    Positions follow P1's layout: P1 gives heights from the prop plane, and the prop plane
-    sits 0.036 m above base_link here, so every z below is P1's height + 0.036.
-    Sensor links carry 1 g each: the body mass in seveninch_base already covers the payload.
+    P1's 5" drone (fiveinch) with the perception sensors: OAK-D Lite, STL-27L lidar and MTF-01P.
+    Positions come from cad/skeleton.py on p3/interface-agreement. The CAD measures heights from the prop
+    plane, which sits 0.0269 m above base_link here, so every z below is the CAD height + 0.0269.
+    Sensor links carry 1 g each: set the body mass in fiveinch_base to the weighed drone.
   -->
-  <model name='seveninch_perception'>
+  <model name='fiveinch_perception'>
     <self_collide>false</self_collide>
     <include merge='true'>
-      <uri>model://seveninch</uri>
+      <uri>model://fiveinch</uri>
     </include>
 
-    <!-- OAK-D Lite under the nose, forward, tilted up 8 deg. Stereo depth, left mono and IMU; the colour camera isn't used. -->
+    <!-- OAK-D Lite under the nose, forward, tilted up 8 deg. Stereo depth, left mono and IMU. -->
     <link name="oakd_link">
-      <pose relative_to="base_link">0.075 0 -0.014 0 -0.1396 0</pose>
+      <pose relative_to="base_link">0.070 0 -0.0351 0 -0.1396 0</pose>
       <inertial>
         <mass>0.001</mass>
         <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
@@ -84,97 +84,12 @@
     </joint>
 
     <!--
-      Two IMX219-200 side cameras on the mast, 15 deg rearward and tilted up 25 deg (P-13 looming).
-      The real cameras run 1640 x 1232. The sim uses 820 x 616 because these wide-angle cameras slow
-      Gazebo down a lot; set 1640 x 1232 here when testing detection range.
-    -->
-    <link name="side_left_link">
-      <pose relative_to="base_link">0 0.016 0.136 0 -0.4363 1.8326</pose>
-      <inertial>
-        <mass>0.001</mass>
-        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
-      </inertial>
-      <visual name="side_left_visual">
-        <geometry><box><size>0.012 0.025 0.025</size></box></geometry>
-        <material><ambient>0.05 0.35 0.35 1</ambient><diffuse>0.05 0.35 0.35 1</diffuse></material>
-      </visual>
-      <sensor name="side_left" type="wideanglecamera">
-        <gz_frame_id>side_left_link</gz_frame_id>
-        <camera>
-          <horizontal_fov>2.7925</horizontal_fov>
-          <image>
-            <width>820</width>
-            <height>616</height>
-            <format>R8G8B8</format>
-          </image>
-          <clip>
-            <near>0.05</near>
-            <far>100</far>
-          </clip>
-          <lens>
-            <type>equidistant</type>
-            <scale_to_hfov>true</scale_to_hfov>
-            <cutoff_angle>1.5708</cutoff_angle>
-            <env_texture_size>256</env_texture_size>
-          </lens>
-        </camera>
-        <always_on>1</always_on>
-        <update_rate>30</update_rate>
-        <topic>side_left/image</topic>
-      </sensor>
-    </link>
-    <joint name="side_left_joint" type="fixed">
-      <parent>base_link</parent>
-      <child>side_left_link</child>
-    </joint>
-
-    <link name="side_right_link">
-      <pose relative_to="base_link">0 -0.016 0.136 0 -0.4363 -1.8326</pose>
-      <inertial>
-        <mass>0.001</mass>
-        <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
-      </inertial>
-      <visual name="side_right_visual">
-        <geometry><box><size>0.012 0.025 0.025</size></box></geometry>
-        <material><ambient>0.05 0.35 0.35 1</ambient><diffuse>0.05 0.35 0.35 1</diffuse></material>
-      </visual>
-      <sensor name="side_right" type="wideanglecamera">
-        <gz_frame_id>side_right_link</gz_frame_id>
-        <camera>
-          <horizontal_fov>2.7925</horizontal_fov>
-          <image>
-            <width>820</width>
-            <height>616</height>
-            <format>R8G8B8</format>
-          </image>
-          <clip>
-            <near>0.05</near>
-            <far>100</far>
-          </clip>
-          <lens>
-            <type>equidistant</type>
-            <scale_to_hfov>true</scale_to_hfov>
-            <cutoff_angle>1.5708</cutoff_angle>
-            <env_texture_size>256</env_texture_size>
-          </lens>
-        </camera>
-        <always_on>1</always_on>
-        <update_rate>30</update_rate>
-        <topic>side_right/image</topic>
-      </sensor>
-    </link>
-    <joint name="side_right_joint" type="fixed">
-      <parent>base_link</parent>
-      <child>side_right_link</child>
-    </joint>
-
-    <!--
-      STL-27L 2D lidar on top of the mast, scan plane 138 mm above the props: 360 deg, 0.167 deg
-      apart (2160 points per turn), 10 Hz, 25 m. PX4 reads this exact link and sensor name for
+      STL-27L 2D lidar on a rear mast, scan plane 73 mm above the props, clear of the battery: 360 deg,
+      0.167 deg apart (2160 points per turn), 10 Hz, 25 m. PX4 reads this exact link and sensor name for
       obstacle_distance, so they match PX4's lidar_2d_v2 model.
     -->
     <link name="link">
-      <pose relative_to="base_link">0 0 0.174 0 0 0</pose>
+      <pose relative_to="base_link">-0.062 0 0.0999 0 0 0</pose>
       <inertial>
         <mass>0.001</mass>
         <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
@@ -182,7 +97,7 @@
       <!-- Body sized like the LD19 (about 39 x 39 x 34 mm), which P1 says the STL-27L matches. -->
       <visual name="stl27l_visual">
         <pose>0 0 -0.009 0 0 0</pose>
-        <geometry><cylinder><radius>0.0195</radius><length>0.0335</length></cylinder></geometry>
+        <geometry><cylinder><radius>0.0195</radius><length>0.034</length></cylinder></geometry>
         <material><ambient>0.55 0.35 0.1 1</ambient><diffuse>0.55 0.35 0.1 1</diffuse></material>
       </visual>
       <sensor name="lidar_2d_v2" type="gpu_lidar">
@@ -217,18 +132,17 @@
       <child>link</child>
     </joint>
 
-    <!-- MTF-01P, 50 mm aft and 42 mm right, 22 mm below the props: downward flow and a 0.02 to 12 m range beam.
-         PX4 reads these link and sensor names. -->
+    <!-- MTF-01P under the rear of the frame: downward flow and a 0.02 to 12 m range beam. PX4 reads these names. -->
     <include merge='true'>
       <uri>model://optical_flow</uri>
-      <pose relative_to="base_link">-0.05 -0.042 0.014 0 0 0</pose>
+      <pose relative_to="base_link">-0.063 0 -0.0146 0 0 0</pose>
     </include>
     <joint name="optical_flow_joint" type="fixed">
       <parent>base_link</parent>
       <child>flow_link</child>
     </joint>
     <link name="lidar_sensor_link">
-      <pose relative_to="base_link">-0.05 -0.042 0.014 0 1.5707 0</pose>
+      <pose relative_to="base_link">-0.063 0 -0.0146 0 1.5707 0</pose>
       <inertial>
         <mass>0.001</mass>
         <inertia><ixx>1e-07</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1e-07</iyy><iyz>0</iyz><izz>1e-07</izz></inertia>
