@@ -9,9 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* Layout: the model fills a drawing sheet; part index on the left, part detail on the right, title block bottom right. */
+  /* Layout: three columns inside a drawing-sheet border: part index and controls, the model, part detail and title block. */
   --paper: #e9e7e2;
-  --panel: rgba(244, 242, 238, 0.9);
+  --panel: #f4f2ee;
   --ink: #17191c;
   --muted: #5c6066;
   --line: #b3afa6;
@@ -28,10 +28,8 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--paper); color: var(--ink); font: 14px/1.45 var(--body); overflow: hidden; }
-#stage { position: fixed; inset: 0; }
-#stage canvas { display: block; width: 100%; height: 100%; outline: none; }
 
-.sheet { position: fixed; inset: 10px; border: 1px solid var(--ink); pointer-events: none; }
+.sheet { position: fixed; inset: 10px; border: 1px solid var(--ink); pointer-events: none; z-index: 0; }
 .sheet::after { content: ''; position: absolute; inset: 14px; border: 1px solid var(--line); }
 .zones { position: absolute; display: flex; font: 500 9px/1 var(--mono); color: var(--muted); }
 .zones.top, .zones.bottom { left: 14px; right: 14px; height: 14px; }
@@ -44,20 +42,23 @@ body { background: var(--paper); color: var(--ink); font: 14px/1.45 var(--body);
 .zones.left span, .zones.right span { border-left: 0; border-top: 1px solid var(--line); }
 .zones span:first-child { border: 0; }
 
-.ui { position: fixed; z-index: 2; }
-.left.ui { top: 40px; left: 44px; width: 470px; display: flex; flex-direction: column; gap: 26px; }
-header { pointer-events: none; }
-.eyebrow { font: 500 11px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
-.eyebrow b { color: var(--accent); font-weight: 500; }
-h1 { font-family: var(--display); font-stretch: 118%; font-weight: 780; font-size: clamp(30px, 3.5vw, 54px); line-height: 0.95; letter-spacing: -0.012em; margin: 0 0 14px; text-wrap: balance; }
-h1 em { font-style: normal; font-stretch: 70%; font-weight: 640; color: var(--accent); }
-.thesis { margin: 0; max-width: 46ch; color: #34383d; font-size: 15px; }
+.app { position: relative; z-index: 1; height: 100%; padding: 25px; display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(290px, 340px); }
+.col { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 22px; padding: 16px 18px; scrollbar-width: thin; }
+.center { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+#stage { position: relative; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
 
-nav { width: 268px; }
+.eyebrow { font: 500 10.5px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.eyebrow b { color: var(--accent); font-weight: 500; }
+h1 { font-family: var(--display); font-stretch: 116%; font-weight: 780; font-size: clamp(26px, 2.05vw, 36px); line-height: 0.98; letter-spacing: -0.012em; margin: 0 0 12px; text-wrap: balance; }
+h1 em { display: block; font-style: normal; font-stretch: 72%; font-weight: 640; color: var(--accent); margin-top: 4px; }
+.thesis { margin: 0; color: #34383d; font-size: 13.5px; }
+
 .index-title { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 0 8px; border-bottom: 1px solid var(--ink); display: flex; justify-content: space-between; }
 nav ol { list-style: none; margin: 0; padding: 0; }
 nav li { border-bottom: 1px solid var(--line); }
-nav button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: baseline; padding: 7px 4px; cursor: pointer; border-radius: 2px; }
+nav button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 4px; cursor: pointer; }
 nav button .n { font: 500 11px/1 var(--mono); color: var(--muted); }
 nav button .t { font-weight: 600; font-size: 13.5px; }
 nav button .m { font: 400 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -66,22 +67,10 @@ nav button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 nav button[aria-pressed="true"] .n, nav button[aria-pressed="true"] .m { color: #c9c6bf; }
 nav button:focus-visible, .ctl button:focus-visible, .chip:focus-visible, #close:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-aside.ui { top: 40px; right: 44px; width: 330px; max-height: calc(100% - 290px); overflow: auto; background: var(--panel); border: 1px solid var(--ink); padding: 16px 18px 18px; backdrop-filter: blur(6px); }
-aside .kicker { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; }
-aside h2 { font-family: var(--display); font-stretch: 105%; font-weight: 720; font-size: 24px; line-height: 1.05; margin: 0 0 4px; text-wrap: balance; }
-aside .role { margin: 0 0 12px; color: #34383d; }
-aside dl { display: grid; grid-template-columns: max-content 1fr; gap: 0; margin: 0 0 12px; border-top: 1px solid var(--line); }
-aside dt, aside dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
-aside dt { font: 500 10.5px/1.6 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-right: 14px; }
-aside dd { font-variant-numeric: tabular-nums; }
-aside .note { font-size: 12.5px; color: var(--muted); margin: 0; }
-#close { all: unset; cursor: pointer; font: 500 10px/1 var(--mono); color: var(--muted); padding: 4px 6px; border: 1px solid var(--line); }
-#close:hover { color: var(--ink); border-color: var(--ink); }
-
-.controls.ui { left: 44px; bottom: 40px; display: grid; gap: 10px; width: min(560px, calc(100% - 88px)); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 10px 14px 12px; border-top: 1px solid var(--line); }
 .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.row .lbl { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); width: 74px; }
-.ctl button, .chip { all: unset; cursor: pointer; font: 500 11.5px/1 var(--mono); padding: 7px 10px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); }
+.row .lbl { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.ctl button, .chip { all: unset; cursor: pointer; font: 500 11.5px/1 var(--mono); padding: 7px 9px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); }
 .ctl button:hover, .chip:hover { background: #fff; }
 .ctl button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .chip { display: inline-flex; gap: 7px; align-items: center; }
@@ -90,47 +79,56 @@ aside .note { font-size: 12.5px; color: var(--muted); margin: 0; }
 .chip.oak { color: var(--oak); border-color: var(--oak); }
 .chip.lidar { color: var(--lidar); border-color: var(--lidar); }
 .chip.flow { color: var(--flow); border-color: var(--flow); }
-.explode { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 220px; }
-.explode span { font: 500 11px/1 var(--mono); color: var(--muted); }
-input[type=range] { flex: 1; accent-color: var(--accent); }
+.explode { display: flex; gap: 8px; align-items: center; width: 190px; }
+.explode span { font: 500 10.5px/1 var(--mono); color: var(--muted); }
+input[type=range] { flex: 1; min-width: 60px; accent-color: var(--accent); }
 
-.titleblock.ui { right: 44px; bottom: 40px; width: 360px; border: 1px solid var(--ink); background: var(--panel); display: grid; grid-template-columns: 78px 1fr; font-size: 12px; }
+#detail { background: var(--panel); border: 1px solid var(--ink); padding: 16px 18px 18px; }
+#detail .kicker { font: 500 10px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#detail h2 { font-family: var(--display); font-stretch: 105%; font-weight: 720; font-size: 23px; line-height: 1.08; margin: 0 0 6px; text-wrap: balance; }
+#detail .role { margin: 0 0 12px; color: #34383d; }
+#detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); margin: 0 0 12px; border-top: 1px solid var(--line); }
+#detail dt, #detail dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+#detail dt { font: 500 10px/1.7 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-right: 12px; }
+#detail dd { font-variant-numeric: tabular-nums; }
+#detail .note { font-size: 12.5px; color: var(--muted); margin: 0; }
+#close { all: unset; cursor: pointer; flex: none; font: 500 10px/1 var(--mono); color: var(--muted); padding: 4px 6px; border: 1px solid var(--line); }
+#close:hover { color: var(--ink); border-color: var(--ink); }
+
+.titleblock { margin-top: auto; border: 1px solid var(--ink); background: var(--panel); display: grid; grid-template-columns: 74px minmax(0, 1fr); font-size: 12px; }
 .titleblock div { padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .titleblock div:nth-child(odd) { font: 500 9.5px/1.9 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-right: 1px solid var(--line); }
 .titleblock div:nth-last-child(-n+2) { border-bottom: 0; }
 .titleblock .big { font-family: var(--display); font-stretch: 112%; font-weight: 720; font-size: 15px; }
 
-.pin { position: fixed; z-index: 1; left: 0; top: 0; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; cursor: pointer; pointer-events: auto; white-space: nowrap; }
+.pin { position: absolute; z-index: 2; left: 0; top: 0; display: flex; align-items: center; cursor: pointer; white-space: nowrap; }
 .pin b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 500 10.5px/1 var(--mono); background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
-.pin span { font: 600 12px/1 var(--body); background: var(--ink); color: var(--paper); padding: 4px 7px; opacity: 0; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
-.pin:hover span, .pin.on span { opacity: 1; transform: none; }
+.pin span { position: absolute; left: 30px; font: 600 12px/1 var(--body); background: var(--ink); color: var(--paper); padding: 4px 7px; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.pin:hover span, .pin.on span { opacity: 1; }
 .pin.on b, .pin:hover b { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pin.dim { opacity: 0.25; }
-.vlabel { position: fixed; z-index: 1; left: 0; top: 0; font: 500 11px/1.35 var(--mono); padding: 4px 7px; background: var(--panel); border-left: 3px solid; pointer-events: none; white-space: nowrap; transform: translate(-50%, -50%); }
+.vlabel { position: absolute; z-index: 1; left: 0; top: 0; font: 500 10.5px/1.35 var(--mono); padding: 4px 7px; background: var(--panel); border-left: 3px solid; pointer-events: none; white-space: nowrap; }
+#hint { position: absolute; z-index: 1; left: 0; right: 0; bottom: 10px; text-align: center; font: 400 10.5px/1.3 var(--mono); color: var(--muted); pointer-events: none; padding: 0 12px; }
 
 #loading { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: var(--paper); font: 500 12px/1.6 var(--mono); color: var(--muted); transition: opacity .5s; }
 #loading .bar { width: 220px; height: 2px; background: var(--line); margin-top: 8px; }
 #loading .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
-#hint { position: fixed; z-index: 2; left: 50%; bottom: 14px; transform: translateX(-50%); font: 400 10.5px/1 var(--mono); color: var(--muted); pointer-events: none; }
 
-@media (max-width: 1180px) {
-  .titleblock.ui { display: none; }
-  aside.ui { max-height: calc(100% - 330px); }
-}
-@media (max-width: 860px) {
-  .sheet, #hint { display: none; }
-  .left.ui { top: 16px; left: 16px; right: 16px; width: auto; }
-  h1 { font-size: 28px; }
-  .thesis { font-size: 13px; }
-  nav { position: fixed; bottom: 150px; left: 0; right: 0; width: auto; overflow-x: auto; padding: 0 16px; }
-  .index-title { display: none; }
-  nav ol { display: flex; gap: 6px; }
-  nav li { border: 0; }
-  nav button { grid-template-columns: auto auto; border: 1px solid var(--ink); background: var(--panel); white-space: nowrap; padding: 7px 9px; }
-  nav button .m { display: none; }
-  aside.ui { top: auto; bottom: 200px; left: 16px; right: 16px; width: auto; max-height: 40%; }
-  .controls.ui { left: 16px; right: 16px; bottom: 16px; width: auto; }
-  .row .lbl { width: 100%; }
+@media (max-width: 1100px) {
+  html, body { height: auto; }
+  body { overflow: auto; }
+  .sheet { display: none; }
+  .app { display: flex; flex-direction: column; height: auto; padding: 16px; gap: 18px; }
+  .col, .center { display: contents; }
+  header { order: 1; }
+  #stage { order: 2; height: 66vh; min-height: 380px; border: 1px solid var(--line); }
+  .controls { order: 3; padding: 0; border: 0; }
+  #detail { order: 4; }
+  nav { order: 5; }
+  .titleblock { order: 6; margin: 0; }
+  .row .lbl { min-width: 82px; }
+  #hint { display: none; }
+  .explode { flex: 1; width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .pin span { transition: none; } }
 </style>
@@ -142,47 +140,48 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 </script>
 </head>
 <body>
-<div id="stage" aria-label="3D model of the drone. Drag to rotate, scroll to zoom, right-drag to pan."></div>
 <div class="sheet" aria-hidden="true">
   <div class="zones top"></div><div class="zones bottom"></div><div class="zones left"></div><div class="zones right"></div>
 </div>
-
-<div class="left ui">
-<header>
-  <p class="eyebrow">Autonomous Drone · <b>P3 Perception &amp; Sensing</b></p>
-  <h1>5-inch obstacle-avoidance quad <em>detailed assembly</em></h1>
-  <p class="thesis">It flies from point A to point B without GPS and gets out of the way of moving obstacles. It uses stereo depth ahead, a 360° lidar plane above the props and optical flow below, all processed on board.</p>
-</header>
-
-<nav aria-label="Parts">
-  <div class="index-title"><span>Part index</span><span>Mass in budget</span></div>
-  <ol id="index"></ol>
-</nav>
+<div class="app">
+  <div class="col left">
+    <header>
+      <p class="eyebrow">Autonomous Drone · <b>P3 Perception &amp; Sensing</b></p>
+      <h1>5-inch obstacle-avoidance quad <em>detailed assembly</em></h1>
+      <p class="thesis">It flies from point A to point B without GPS and gets out of the way of moving obstacles. It uses stereo depth ahead, a 360° lidar plane above the props and optical flow below, all processed on board.</p>
+    </header>
+    <nav aria-label="Parts">
+      <div class="index-title"><span>Part index</span><span>Mass in budget</span></div>
+      <ol id="index"></ol>
+    </nav>
+  </div>
+  <section class="center">
+    <main id="stage" aria-label="3D model of the drone. Drag to rotate, scroll to zoom, right-drag to pan.">
+      <div id="hint">Drag to rotate · scroll to zoom · right-drag to pan · click a part to isolate it · Esc to clear</div>
+    </main>
+      <div class="controls">
+        <div class="row">
+          <span class="lbl">Assembly</span>
+          <div class="explode"><span>Built</span><input type="range" id="explode" min="0" max="1" step="0.01" value="0" aria-label="Explode the assembly"><span>Apart</span></div>
+          <span class="ctl"><button id="explodeBtn" aria-pressed="false">Explode</button></span>
+        </div>
+        <div class="row">
+          <span class="lbl">Coverage</span>
+          <button class="chip oak" data-view="oak" aria-pressed="true"><i></i>OAK-D view</button>
+          <button class="chip lidar" data-view="lidar" aria-pressed="true"><i></i>Lidar plane</button>
+          <button class="chip flow" data-view="flow" aria-pressed="false"><i></i>Flow + range</button>
+        </div>
+        <div class="row ctl">
+          <span class="lbl">Camera</span>
+          <button data-cam="iso">3/4</button><button data-cam="front">Front</button><button data-cam="side">Side</button><button data-cam="top">Top</button><button data-cam="below">Below</button><button id="spin" aria-pressed="false">Turntable</button>
+        </div>
+      </div>
+  </section>
+  <div class="col right">
+    <aside id="detail" aria-live="polite"></aside>
+    <div class="titleblock" id="titleblock"></div>
+  </div>
 </div>
-
-<aside class="ui" id="detail" aria-live="polite"></aside>
-
-<div class="controls ui">
-  <div class="row">
-    <span class="lbl">Assembly</span>
-    <div class="explode"><span>Built</span><input type="range" id="explode" min="0" max="1" step="0.01" value="0" aria-label="Explode the assembly"><span>Exploded</span></div>
-    <span class="ctl"><button id="explodeBtn" aria-pressed="false">Explode</button></span>
-  </div>
-  <div class="row">
-    <span class="lbl">Coverage</span>
-    <button class="chip oak" data-view="oak" aria-pressed="true"><i></i>OAK-D view</button>
-    <button class="chip lidar" data-view="lidar" aria-pressed="true"><i></i>Lidar plane</button>
-    <button class="chip flow" data-view="flow" aria-pressed="false"><i></i>Flow + range</button>
-  </div>
-  <div class="row ctl">
-    <span class="lbl">Camera</span>
-    <button data-cam="iso">3/4</button><button data-cam="front">Front</button><button data-cam="side">Side</button><button data-cam="top">Top</button><button data-cam="below">Below</button>
-    <button id="spin" aria-pressed="false">Turntable</button>
-  </div>
-</div>
-
-<div class="titleblock ui" id="titleblock"></div>
-<div id="hint">Drag to rotate · scroll to zoom · right-drag to pan · click a part to isolate it · Esc to clear</div>
 <div id="loading"><div>Loading the assembly<div class="bar"><i id="bar"></i></div></div></div>
 
 <script type="module">
@@ -197,7 +196,7 @@ const GLB = '__GLB__';
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const GROUPS = [
-  { id: 'oakd', name: 'OAK-D Lite', short: 'Forward stereo depth', anchor: [70, 30, -50],
+  { id: 'oakd', name: 'OAK-D Lite', short: 'Forward stereo depth', anchor: [72, 0, -50],
     role: 'Forward depth, the left mono image for SLAM, and an IMU, all from one USB 3 cable.',
     rows: [['View', '73° × 58°, tilted up 8°'], ['Depth', '0.2 to 12 m, about 0.06 m error at 3 m'], ['Rate', '30 Hz depth and mono, IMU at 250 Hz'],
            ['Baseline', '7.5 cm stereo pair, depth computed on the camera'], ['Connects', 'Raspberry Pi 5, USB 3'], ['Mount', 'Front face 70 mm ahead of centre, 62 mm below the props']],
@@ -217,7 +216,7 @@ const GROUPS = [
     rows: [['Model', 'Pi 5, 8 GB, with the Active Cooler'], ['Mount', 'Upside down under the bottom plate, fan facing down'], ['Carrier', 'Printed carrier and guard tray on M2.5 posts'],
            ['Ports', 'USB 3 faces forward, toward the OAK-D Lite']],
     note: 'Set usb_max_current_enable=1 so the OAK-D Lite gets close to 1 A. Check it on the bench.' },
-  { id: 'stack', name: 'Flight stack', short: 'FC, ESC, receiver, BEC', anchor: [24, -24, -6],
+  { id: 'stack', name: 'Flight stack', short: 'FC, ESC, receiver, BEC', anchor: [-30, -21, -8],
     role: 'Runs PX4 v1.17 and drives the motors.',
     rows: [['Flight controller', 'MicoAir743 V2, on rubber grommets'], ['ESC', 'MicoAir 55A AM32 4-in-1'], ['Receiver', 'RadioMaster RP1 ExpressLRS'],
            ['Power', 'Matek BEC12S-PRO for the Pi and sensors'], ['Capacitor', '1000 µF 50 V low-ESR across the battery pads']],
@@ -226,19 +225,19 @@ const GROUPS = [
     role: 'Powers everything. It sits on top so the lidar mast and the Pi stay clear underneath.',
     rows: [['Pack', 'Tattu R-Line 5.0, 6S 1800 mAh 150C'], ['Size', '77 × 38 × 46 mm, 287 g'], ['Mount', 'One 20 mm strap through the top plate'], ['Lead', 'XT60 down the right side to the ESC']],
     note: 'The team requirement is a hover of at least 7 minutes. Rerun eCalc with these motors and props to confirm it.' },
-  { id: 'motors', name: 'Motors', short: 'XING2 2207 1855KV', anchor: [80, -80, -12],
+  { id: 'motors', name: 'Motors', short: 'XING2 2207 1855KV', anchor: [80, 80, -12],
     role: 'Four iFlight XING2 2207 1855KV motors on 6S.',
     rows: [['Each', '31.6 g'], ['Spin', "PX4 quad X: front right and rear left CCW"], ['Mount', '16 × 16 mm pattern, M3']],
     note: 'Thrust-to-weight must be at least 4:1. Confirm it with the eCalc rerun.' },
-  { id: 'props', name: 'Props', short: 'HQ R35 5.1 × 3.5 × 3', anchor: [125, -100, 2],
+  { id: 'props', name: 'Props', short: 'HQ R35 5.1 × 3.5 × 3', anchor: [-115, -95, 2],
     role: '5.1-inch tri-blades, the largest the 226 mm frame takes.',
     rows: [['Size', '5.1 in diameter, 3.5 in pitch, 3 blades'], ['Each', '4.5 g'], ['Clearance', 'Out of the OAK-D view by 3° and below the lidar plane']],
     note: 'They\'re modelled with real twist and taper. The OAK-D mount was placed by checking every point of each prop disc against its view.' },
-  { id: 'frame', name: 'Frame', short: 'Source One V5 5"', anchor: [62, -62, -22],
+  { id: 'frame', name: 'Frame', short: 'Source One V5 5"', anchor: [-60, 60, -22],
     role: 'Pyrodrone Source One V5: carbon arms between two plates, with a top plate on standoffs.',
     rows: [['Size', '226 mm motor to motor'], ['Listed mass', '123.5 g'], ['Plates', '110 × 42 mm, 2 mm carbon (estimate)'], ['Arms', '5 mm carbon (estimate)']],
     note: 'Plate and arm shapes are estimates until we check them against the frame\'s CAD files.' },
-  { id: 'legs', name: 'Legs', short: 'Printed, rubber feet', anchor: [-40, -40, -112],
+  { id: 'legs', name: 'Legs', short: 'Printed, rubber feet', anchor: [40, -40, -112],
     role: 'Four printed legs bolted under the arms. They keep the Pi, the camera and the flow sensor off the ground.',
     rows: [['Height', '98 mm below the arms'], ['Clearance', 'The flow sensor sits 84 mm up, above the 80 mm minimum'], ['Placement', 'On the arm lines, outside every sensor view']],
     note: 'Leg positions were moved onto the arms in this revision, and the view checks were rerun.' },
@@ -522,7 +521,7 @@ function buildCoverage() {
   for (const [k, g] of Object.entries(coverage)) {
     const el = document.createElement('div');
     el.className = 'vlabel'; el.style.borderColor = g.userData.label.color; el.innerHTML = g.userData.label.text;
-    document.body.appendChild(el); g.userData.el = el;
+    stage.appendChild(el); g.userData.el = el;
     const on = document.querySelector(`.chip[data-view="${k}"]`).getAttribute('aria-pressed') === 'true';
     g.visible = on;
   }
@@ -539,7 +538,7 @@ const pins = GROUPS.map(g => {
   el.addEventListener('click', e => { e.stopPropagation(); select(selected === g.id ? null : g.id, true); });
   el.addEventListener('mouseenter', () => setHover(g.id));
   el.addEventListener('mouseleave', () => setHover(null));
-  document.body.appendChild(el);
+  stage.appendChild(el);
   return { g, el, at: new THREE.Vector3(...g.anchor) };
 });
 
@@ -617,7 +616,11 @@ renderer.domElement.addEventListener('pointerleave', () => setHover(null));
 
 // ---------- camera ----------
 const CAMS = { iso: [1.0, -1.3, 0.75], front: [1, 0, 0.06], side: [0, -1, 0.06], top: [0.0001, -0.0001, 1], below: [0.7, -0.9, -0.55] };
-function homeDistance() { return (innerWidth / innerHeight < 1 ? 1250 : 980) * (1 + explodeGoal * 0.3); }
+function homeDistance() {
+  // Fit a 240 mm radius around the drone in whichever view angle is tighter.
+  const v = Math.tan(camera.fov / 2 * Math.PI / 180), h = v * SW / SH;
+  return 240 / Math.min(v, h) * (1 + explodeGoal * 0.3);
+}
 let flight = null;
 function fly(target, pos, ms = 750) {
   if (reduced) { controls.target.copy(target); camera.position.copy(pos); return; }
@@ -633,14 +636,14 @@ const spin = document.getElementById('spin');
 spin.addEventListener('click', () => { controls.autoRotate = !controls.autoRotate; spin.setAttribute('aria-pressed', controls.autoRotate); });
 controls.addEventListener('start', () => { flight = null; });
 
+let SW = 1, SH = 1;
 function resize() {
-  renderer.setSize(innerWidth, innerHeight, false);
-  camera.aspect = innerWidth / innerHeight;
-  // Centre the model in the space the panels leave free.
-  camera.setViewOffset(innerWidth, innerHeight, 0, innerWidth > 860 ? 60 : 120, innerWidth, innerHeight);
+  SW = Math.max(1, stage.clientWidth); SH = Math.max(1, stage.clientHeight);
+  renderer.setSize(SW, SH, false);
+  camera.aspect = SW / SH;
   camera.updateProjectionMatrix();
 }
-addEventListener('resize', resize);
+new ResizeObserver(resize).observe(stage);
 resize();
 camera.position.copy(HOME).add(new THREE.Vector3(...CAMS.iso).normalize().multiplyScalar(homeDistance()));
 
@@ -648,13 +651,30 @@ camera.position.copy(HOME).add(new THREE.Vector3(...CAMS.iso).normalize().multip
 const tmp = new THREE.Vector3();
 function place(el, world, clamp = false) {
   tmp.copy(world).project(camera);
-  let x = (tmp.x + 1) / 2 * innerWidth, y = (1 - tmp.y) / 2 * innerHeight;
+  let x = (tmp.x + 1) / 2 * SW, y = (1 - tmp.y) / 2 * SH;
   if (clamp) {
     const w = el.offsetWidth / 2 + 30, h = el.offsetHeight / 2 + 30;
-    x = Math.min(Math.max(x, w), innerWidth - w); y = Math.min(Math.max(y, h), innerHeight - h);
+    x = Math.min(Math.max(x, w), SW - w); y = Math.min(Math.max(y, h), SH - h);
   }
   el.style.display = tmp.z < 1 && (clamp || (Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1)) ? '' : 'none';
   el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+}
+// Project every pin, then push apart any that sit on top of each other.
+const spots = [];
+function placePins() {
+  pins.forEach((p, i) => {
+    tmp.copy(p.at).add(groupOffset(p.g.id)).project(camera);
+    spots[i] = { x: (tmp.x + 1) / 2 * SW, y: (1 - tmp.y) / 2 * SH, vis: tmp.z < 1 };
+  });
+  for (let it = 0; it < 4; it++) for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) {
+    const a = spots[i], b = spots[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+    if (d < 30) { const k = (30 - d) / 2 / d; a.x -= dx * k; a.y -= dy * k; b.x += dx * k; b.y += dy * k; }
+  }
+  pins.forEach((p, i) => {
+    const s = spots[i];
+    p.el.style.display = s.vis && s.x > -20 && s.x < SW + 20 && s.y > -20 && s.y < SH + 20 ? '' : 'none';
+    p.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-12px, -12px)`;
+  });
 }
 const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 let last = performance.now();
@@ -674,7 +694,7 @@ function frame(now) {
   for (const n of nodes) n.mesh.position.copy(n.explode).multiplyScalar(explodeNow);
   controls.update();
   if (coverage.lidar.userData.sweep && !reduced) coverage.lidar.userData.sweep.rotation.z = (now / 2400 % 1) * Math.PI * 2;
-  for (const p of pins) place(p.el, tmp.copy(p.at).add(groupOffset(p.g.id)).clone());
+  placePins();
   for (const g of Object.values(coverage)) {
     if (!g.userData.el) continue;
     g.userData.el.style.display = g.visible && !selected ? "" : "none";

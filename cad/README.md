@@ -2,15 +2,19 @@
 
 The 5" drone, built for flying from A to B while avoiding still and moving obstacles. It has a Source One V5 5" frame, the OAK-D Lite under the nose, the STL-27L lidar on a rear mast, the MTF-01P under the rear of the frame, a Raspberry Pi 5 hung under the bottom plate and the battery on top.
 
+![Detailed assembly, black and white render](drone5_render.png)
+
 | File | What it is |
 | --- | --- |
 | `drone5_3d.html` | Interactive 3D page of the detailed model. Open it in a browser (see below) |
+| `drone5_render.png`, `drone5_lineart.png` | Black-and-white renders of the detailed model: grey shaded with edges, and line art |
 | `model5.step` | The detailed model, 121 parts, for Fusion 360, SolidWorks, FreeCAD or Onshape |
 | `skeleton.png` | Top, side and front views with the sensor views, the parts table, mass and the check findings |
 | `skeleton.step` | The simple block layout, with the sensor views as solids |
 | `skeleton.py` | Lays out every part, finds the OAK-D Lite mount, checks parts against each other and every sensor view, and works out mass and balance |
 | `model5.py` | Builds the detailed parts inside the skeleton's layout, checks them again, and writes `model5.step` and `drone5_3d.html` |
 | `page_template.html` | The 3D page, before `model5.py` puts the model inside it |
+| `render5.py` | Makes the two black-and-white renders with VTK |
 
 Lengths are mm, X forward, Y left, Z up, with Z = 0 at the prop plane. The sim's `base_link` sits 26.9 mm below the prop plane, so add 26.9 mm to Z for transforms from `base_link`.
 
@@ -62,9 +66,10 @@ The camera view is drawn 0.5 m long and the lidar plane 0.38 m wide so they don'
 pip install cadquery matplotlib
 python3 skeleton.py
 python3 model5.py
+python3 render5.py
 ```
 
-`model5.py` takes about 20 seconds.
+`model5.py` takes about 20 seconds and `render5.py` about 10. `render5.py` uses VTK, which comes with cadquery, and Pillow.
 
 ## Current result
 

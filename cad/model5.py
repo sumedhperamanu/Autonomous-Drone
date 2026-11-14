@@ -501,16 +501,17 @@ def check_overlaps(limit=1.0):
     return problems
 
 
+def build_all():
+    """Fill PARTS with every detailed part. render5.py uses this too."""
+    if not PARTS:
+        for build in (build_frame, build_motors, build_stack, build_battery, build_lidar, build_oak, build_pi,
+                      build_mtf, build_legs):
+            build()
+    return PARTS
+
+
 def main():
-    build_frame()
-    build_motors()
-    build_stack()
-    build_battery()
-    build_lidar()
-    build_oak()
-    build_pi()
-    build_mtf()
-    build_legs()
+    build_all()
     print(f'{len(PARTS)} detailed parts')
 
     sk_parts = sk.build_parts()
