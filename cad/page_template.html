@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5-Inch Obstacle-Avoidance Quad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: the model fills a drawing sheet; part index on the left, part detail on the right, title block bottom right. */
+  --paper: #e9e7e2;
+  --panel: rgba(244, 242, 238, 0.9);
+  --ink: #17191c;
+  --muted: #5c6066;
+  --line: #b3afa6;
+  --accent: #dd5519;
+  --oak: #2b64cc;
+  --lidar: #cc3829;
+  --flow: #b97d08;
+  --range: #7046b8;
+  --display: 'Archivo', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --body: 'IBM Plex Sans', 'Segoe UI', Helvetica, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 14px/1.45 var(--body); overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+.sheet { position: fixed; inset: 10px; border: 1px solid var(--ink); pointer-events: none; }
+.sheet::after { content: ''; position: absolute; inset: 14px; border: 1px solid var(--line); }
+.zones { position: absolute; display: flex; font: 500 9px/1 var(--mono); color: var(--muted); }
+.zones.top, .zones.bottom { left: 14px; right: 14px; height: 14px; }
+.zones.top { top: 0; }
+.zones.bottom { bottom: 0; }
+.zones.left, .zones.right { top: 14px; bottom: 14px; width: 14px; flex-direction: column; }
+.zones.left { left: 0; }
+.zones.right { right: 0; }
+.zones span { flex: 1; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--line); }
+.zones.left span, .zones.right span { border-left: 0; border-top: 1px solid var(--line); }
+.zones span:first-child { border: 0; }
+
+.ui { position: fixed; z-index: 2; }
+.left.ui { top: 40px; left: 44px; width: 470px; display: flex; flex-direction: column; gap: 26px; }
+header { pointer-events: none; }
+.eyebrow { font: 500 11px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.eyebrow b { color: var(--accent); font-weight: 500; }
+h1 { font-family: var(--display); font-stretch: 118%; font-weight: 780; font-size: clamp(30px, 3.5vw, 54px); line-height: 0.95; letter-spacing: -0.012em; margin: 0 0 14px; text-wrap: balance; }
+h1 em { font-style: normal; font-stretch: 70%; font-weight: 640; color: var(--accent); }
+.thesis { margin: 0; max-width: 46ch; color: #34383d; font-size: 15px; }
+
+nav { width: 268px; }
+.index-title { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 0 8px; border-bottom: 1px solid var(--ink); display: flex; justify-content: space-between; }
+nav ol { list-style: none; margin: 0; padding: 0; }
+nav li { border-bottom: 1px solid var(--line); }
+nav button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: baseline; padding: 7px 4px; cursor: pointer; border-radius: 2px; }
+nav button .n { font: 500 11px/1 var(--mono); color: var(--muted); }
+nav button .t { font-weight: 600; font-size: 13.5px; }
+nav button .m { font: 400 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+nav button:hover, nav button.hover { background: rgba(23, 25, 28, 0.06); }
+nav button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+nav button[aria-pressed="true"] .n, nav button[aria-pressed="true"] .m { color: #c9c6bf; }
+nav button:focus-visible, .ctl button:focus-visible, .chip:focus-visible, #close:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+aside.ui { top: 40px; right: 44px; width: 330px; max-height: calc(100% - 290px); overflow: auto; background: var(--panel); border: 1px solid var(--ink); padding: 16px 18px 18px; backdrop-filter: blur(6px); }
+aside .kicker { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; }
+aside h2 { font-family: var(--display); font-stretch: 105%; font-weight: 720; font-size: 24px; line-height: 1.05; margin: 0 0 4px; text-wrap: balance; }
+aside .role { margin: 0 0 12px; color: #34383d; }
+aside dl { display: grid; grid-template-columns: max-content 1fr; gap: 0; margin: 0 0 12px; border-top: 1px solid var(--line); }
+aside dt, aside dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+aside dt { font: 500 10.5px/1.6 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-right: 14px; }
+aside dd { font-variant-numeric: tabular-nums; }
+aside .note { font-size: 12.5px; color: var(--muted); margin: 0; }
+#close { all: unset; cursor: pointer; font: 500 10px/1 var(--mono); color: var(--muted); padding: 4px 6px; border: 1px solid var(--line); }
+#close:hover { color: var(--ink); border-color: var(--ink); }
+
+.controls.ui { left: 44px; bottom: 40px; display: grid; gap: 10px; width: min(560px, calc(100% - 88px)); }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row .lbl { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); width: 74px; }
+.ctl button, .chip { all: unset; cursor: pointer; font: 500 11.5px/1 var(--mono); padding: 7px 10px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); }
+.ctl button:hover, .chip:hover { background: #fff; }
+.ctl button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip { display: inline-flex; gap: 7px; align-items: center; }
+.chip i { width: 9px; height: 9px; border: 1.5px solid currentColor; display: inline-block; }
+.chip[aria-pressed="true"] i { background: currentColor; }
+.chip.oak { color: var(--oak); border-color: var(--oak); }
+.chip.lidar { color: var(--lidar); border-color: var(--lidar); }
+.chip.flow { color: var(--flow); border-color: var(--flow); }
+.explode { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 220px; }
+.explode span { font: 500 11px/1 var(--mono); color: var(--muted); }
+input[type=range] { flex: 1; accent-color: var(--accent); }
+
+.titleblock.ui { right: 44px; bottom: 40px; width: 360px; border: 1px solid var(--ink); background: var(--panel); display: grid; grid-template-columns: 78px 1fr; font-size: 12px; }
+.titleblock div { padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.titleblock div:nth-child(odd) { font: 500 9.5px/1.9 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-right: 1px solid var(--line); }
+.titleblock div:nth-last-child(-n+2) { border-bottom: 0; }
+.titleblock .big { font-family: var(--display); font-stretch: 112%; font-weight: 720; font-size: 15px; }
+
+.pin { position: fixed; z-index: 1; left: 0; top: 0; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; cursor: pointer; pointer-events: auto; white-space: nowrap; }
+.pin b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 500 10.5px/1 var(--mono); background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
+.pin span { font: 600 12px/1 var(--body); background: var(--ink); color: var(--paper); padding: 4px 7px; opacity: 0; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
+.pin:hover span, .pin.on span { opacity: 1; transform: none; }
+.pin.on b, .pin:hover b { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pin.dim { opacity: 0.25; }
+.vlabel { position: fixed; z-index: 1; left: 0; top: 0; font: 500 11px/1.35 var(--mono); padding: 4px 7px; background: var(--panel); border-left: 3px solid; pointer-events: none; white-space: nowrap; transform: translate(-50%, -50%); }
+
+#loading { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: var(--paper); font: 500 12px/1.6 var(--mono); color: var(--muted); transition: opacity .5s; }
+#loading .bar { width: 220px; height: 2px; background: var(--line); margin-top: 8px; }
+#loading .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+#hint { position: fixed; z-index: 2; left: 50%; bottom: 14px; transform: translateX(-50%); font: 400 10.5px/1 var(--mono); color: var(--muted); pointer-events: none; }
+
+@media (max-width: 1180px) {
+  .titleblock.ui { display: none; }
+  aside.ui { max-height: calc(100% - 330px); }
+}
+@media (max-width: 860px) {
+  .sheet, #hint { display: none; }
+  .left.ui { top: 16px; left: 16px; right: 16px; width: auto; }
+  h1 { font-size: 28px; }
+  .thesis { font-size: 13px; }
+  nav { position: fixed; bottom: 150px; left: 0; right: 0; width: auto; overflow-x: auto; padding: 0 16px; }
+  .index-title { display: none; }
+  nav ol { display: flex; gap: 6px; }
+  nav li { border: 0; }
+  nav button { grid-template-columns: auto auto; border: 1px solid var(--ink); background: var(--panel); white-space: nowrap; padding: 7px 9px; }
+  nav button .m { display: none; }
+  aside.ui { top: auto; bottom: 200px; left: 16px; right: 16px; width: auto; max-height: 40%; }
+  .controls.ui { left: 16px; right: 16px; bottom: 16px; width: auto; }
+  .row .lbl { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .pin span { transition: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage" aria-label="3D model of the drone. Drag to rotate, scroll to zoom, right-drag to pan."></div>
+<div class="sheet" aria-hidden="true">
+  <div class="zones top"></div><div class="zones bottom"></div><div class="zones left"></div><div class="zones right"></div>
+</div>
+
+<div class="left ui">
+<header>
+  <p class="eyebrow">Autonomous Drone · <b>P3 Perception &amp; Sensing</b></p>
+  <h1>5-inch obstacle-avoidance quad <em>detailed assembly</em></h1>
+  <p class="thesis">It flies from point A to point B without GPS and gets out of the way of moving obstacles. It uses stereo depth ahead, a 360° lidar plane above the props and optical flow below, all processed on board.</p>
+</header>
+
+<nav aria-label="Parts">
+  <div class="index-title"><span>Part index</span><span>Mass in budget</span></div>
+  <ol id="index"></ol>
+</nav>
+</div>
+
+<aside class="ui" id="detail" aria-live="polite"></aside>
+
+<div class="controls ui">
+  <div class="row">
+    <span class="lbl">Assembly</span>
+    <div class="explode"><span>Built</span><input type="range" id="explode" min="0" max="1" step="0.01" value="0" aria-label="Explode the assembly"><span>Exploded</span></div>
+    <span class="ctl"><button id="explodeBtn" aria-pressed="false">Explode</button></span>
+  </div>
+  <div class="row">
+    <span class="lbl">Coverage</span>
+    <button class="chip oak" data-view="oak" aria-pressed="true"><i></i>OAK-D view</button>
+    <button class="chip lidar" data-view="lidar" aria-pressed="true"><i></i>Lidar plane</button>
+    <button class="chip flow" data-view="flow" aria-pressed="false"><i></i>Flow + range</button>
+  </div>
+  <div class="row ctl">
+    <span class="lbl">Camera</span>
+    <button data-cam="iso">3/4</button><button data-cam="front">Front</button><button data-cam="side">Side</button><button data-cam="top">Top</button><button data-cam="below">Below</button>
+    <button id="spin" aria-pressed="false">Turntable</button>
+  </div>
+</div>
+
+<div class="titleblock ui" id="titleblock"></div>
+<div id="hint">Drag to rotate · scroll to zoom · right-drag to pan · click a part to isolate it · Esc to clear</div>
+<div id="loading"><div>Loading the assembly<div class="bar"><i id="bar"></i></div></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const META = __META__;
+const GLB = '__GLB__';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const GROUPS = [
+  { id: 'oakd', name: 'OAK-D Lite', short: 'Forward stereo depth', anchor: [70, 30, -50],
+    role: 'Forward depth, the left mono image for SLAM, and an IMU, all from one USB 3 cable.',
+    rows: [['View', '73° × 58°, tilted up 8°'], ['Depth', '0.2 to 12 m, about 0.06 m error at 3 m'], ['Rate', '30 Hz depth and mono, IMU at 250 Hz'],
+           ['Baseline', '7.5 cm stereo pair, depth computed on the camera'], ['Connects', 'Raspberry Pi 5, USB 3'], ['Mount', 'Front face 70 mm ahead of centre, 62 mm below the props']],
+    note: 'This is the lowest mount that keeps all four props out of view with a 3° margin. The printed cradle tilts it up 8°.' },
+  { id: 'lidar', name: 'STL-27L lidar', short: '360° scan plane', anchor: [-62, 0, 84],
+    role: 'Sees obstacles all the way round, including whatever comes at the drone from the sides and behind.',
+    rows: [['Scan', '360°, 2160 points a turn, 0.167° apart'], ['Range', '0.03 to 25 m at 10 Hz'], ['Plane', '73 mm above the props, clear of the battery'],
+           ['Small objects', 'A 7 cm ball shows at about 8 m'], ['Connects', 'Raspberry Pi 5 USB, through a UART adapter'], ['PX4', 'Also read as obstacle_distance']],
+    note: 'It sits on a carbon mast with printed mounts, at the rear of the top plate.' },
+  { id: 'mtf', name: 'MTF-01P', short: 'Downward flow + range', anchor: [-63, 0, -44],
+    role: 'Optical flow and a time-of-flight rangefinder. It holds position and height when SLAM loses tracking.',
+    rows: [['Flow', '42° view, works above 60 lux'], ['Range', '0.02 to 12 m, 100 Hz'], ['Height', '84 mm off the ground when landed'],
+           ['Connects', 'Flight controller TELEM2, MAVLink at 115,200 baud'], ['Mass', 'About 8 g']],
+    note: 'It sits in a printed holder under the rear of the frame, behind the Pi.' },
+  { id: 'pi', name: 'Raspberry Pi 5', short: 'Companion computer', anchor: [-4, -29, -42],
+    role: 'Runs ROS 2 Jazzy, SLAM and the avoidance planner, and talks to PX4 over XRCE-DDS.',
+    rows: [['Model', 'Pi 5, 8 GB, with the Active Cooler'], ['Mount', 'Upside down under the bottom plate, fan facing down'], ['Carrier', 'Printed carrier and guard tray on M2.5 posts'],
+           ['Ports', 'USB 3 faces forward, toward the OAK-D Lite']],
+    note: 'Set usb_max_current_enable=1 so the OAK-D Lite gets close to 1 A. Check it on the bench.' },
+  { id: 'stack', name: 'Flight stack', short: 'FC, ESC, receiver, BEC', anchor: [24, -24, -6],
+    role: 'Runs PX4 v1.17 and drives the motors.',
+    rows: [['Flight controller', 'MicoAir743 V2, on rubber grommets'], ['ESC', 'MicoAir 55A AM32 4-in-1'], ['Receiver', 'RadioMaster RP1 ExpressLRS'],
+           ['Power', 'Matek BEC12S-PRO for the Pi and sensors'], ['Capacitor', '1000 µF 50 V low-ESR across the battery pads']],
+    note: 'Check that the ESC handles at least 250k eRPM with these motors.' },
+  { id: 'battery', name: '6S 1800 mAh battery', short: 'Tattu R-Line 5.0', anchor: [20, -19, 40],
+    role: 'Powers everything. It sits on top so the lidar mast and the Pi stay clear underneath.',
+    rows: [['Pack', 'Tattu R-Line 5.0, 6S 1800 mAh 150C'], ['Size', '77 × 38 × 46 mm, 287 g'], ['Mount', 'One 20 mm strap through the top plate'], ['Lead', 'XT60 down the right side to the ESC']],
+    note: 'The team requirement is a hover of at least 7 minutes. Rerun eCalc with these motors and props to confirm it.' },
+  { id: 'motors', name: 'Motors', short: 'XING2 2207 1855KV', anchor: [80, -80, -12],
+    role: 'Four iFlight XING2 2207 1855KV motors on 6S.',
+    rows: [['Each', '31.6 g'], ['Spin', "PX4 quad X: front right and rear left CCW"], ['Mount', '16 × 16 mm pattern, M3']],
+    note: 'Thrust-to-weight must be at least 4:1. Confirm it with the eCalc rerun.' },
+  { id: 'props', name: 'Props', short: 'HQ R35 5.1 × 3.5 × 3', anchor: [125, -100, 2],
+    role: '5.1-inch tri-blades, the largest the 226 mm frame takes.',
+    rows: [['Size', '5.1 in diameter, 3.5 in pitch, 3 blades'], ['Each', '4.5 g'], ['Clearance', 'Out of the OAK-D view by 3° and below the lidar plane']],
+    note: 'They\'re modelled with real twist and taper. The OAK-D mount was placed by checking every point of each prop disc against its view.' },
+  { id: 'frame', name: 'Frame', short: 'Source One V5 5"', anchor: [62, -62, -22],
+    role: 'Pyrodrone Source One V5: carbon arms between two plates, with a top plate on standoffs.',
+    rows: [['Size', '226 mm motor to motor'], ['Listed mass', '123.5 g'], ['Plates', '110 × 42 mm, 2 mm carbon (estimate)'], ['Arms', '5 mm carbon (estimate)']],
+    note: 'Plate and arm shapes are estimates until we check them against the frame\'s CAD files.' },
+  { id: 'legs', name: 'Legs', short: 'Printed, rubber feet', anchor: [-40, -40, -112],
+    role: 'Four printed legs bolted under the arms. They keep the Pi, the camera and the flow sensor off the ground.',
+    rows: [['Height', '98 mm below the arms'], ['Clearance', 'The flow sensor sits 84 mm up, above the 80 mm minimum'], ['Placement', 'On the arm lines, outside every sensor view']],
+    note: 'Leg positions were moved onto the arms in this revision, and the view checks were rerun.' },
+];
+
+const MAT = {
+  carbon: { color: 0x141518, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.07, carbon: true },
+  titanium: { color: 0x8e9197, metalness: 1, roughness: 0.32 },
+  alu_dark: { color: 0x2b2d31, metalness: 0.75, roughness: 0.42 },
+  bell: { color: 0x1c1e21, metalness: 0.9, roughness: 0.28 },
+  accent: { color: 0xdd5519, metalness: 0.55, roughness: 0.32 },
+  copper: { color: 0xb8713b, metalness: 1, roughness: 0.34 },
+  steel: { color: 0xc8cbd0, metalness: 1, roughness: 0.22 },
+  pcb_black: { color: 0x131416, roughness: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.3 },
+  pcb_green: { color: 0x1c5c39, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 },
+  gold: { color: 0xd6a64b, metalness: 1, roughness: 0.28 },
+  chip: { color: 0x1a1b1d, roughness: 0.62 },
+  plastic_white: { color: 0xeceae4, roughness: 0.6 },
+  plastic_black: { color: 0x1b1c1e, roughness: 0.55 },
+  glass: { color: 0x05070a, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02 },
+  print: { color: 0xdd5519, roughness: 0.78, sheen: 0.4, sheenColor: 0xffb48a, sheenRoughness: 0.8 },
+  battery: { color: 0x1b1c1f, roughness: 0.42, clearcoat: 0.35 },
+  label: { color: 0xb51d18, roughness: 0.48, clearcoat: 0.3 },
+  strap: { color: 0x161616, roughness: 0.95, sheen: 0.6, sheenColor: 0x666666 },
+  wire_red: { color: 0xb3221a, roughness: 0.55 },
+  wire_black: { color: 0x141414, roughness: 0.58 },
+  xt60: { color: 0xf2bf1d, roughness: 0.45 },
+  shrink: { color: 0x214fae, roughness: 0.5, clearcoat: 0.3 },
+  prop: { color: 0x3a4453, roughness: 0.18, clearcoat: 1, transparent: true, opacity: 0.84, side: THREE.DoubleSide },
+  rubber: { color: 0x1c1c1c, roughness: 0.95 },
+  lidar: { color: 0x25272b, metalness: 0.3, roughness: 0.48 },
+  usb3: { color: 0x2050d0, roughness: 0.5 },
+};
+
+// ---------- drawing-sheet zones ----------
+const zone = (sel, labels) => { document.querySelector(sel).innerHTML = labels.map(l => `<span>${l}</span>`).join(''); };
+zone('.zones.top', [1, 2, 3, 4, 5, 6, 7, 8]); zone('.zones.bottom', [1, 2, 3, 4, 5, 6, 7, 8]);
+zone('.zones.left', ['A', 'B', 'C', 'D', 'E', 'F']); zone('.zones.right', ['A', 'B', 'C', 'D', 'E', 'F']);
+
+// ---------- static text ----------
+const fmt = n => n.toLocaleString('en-CA');
+document.getElementById('titleblock').innerHTML = [
+  ['Project', 'Autonomous Drone · P3 Perception'],
+  ['Drawing', '<span class="big">5" perception build</span>'],
+  ['Mass', `${fmt(META.mass)} g · ${fmt(META.mass_margin)} g with 10% margin · limit 950 g`],
+  ['Span', `${META.motor_to_motor} mm motor to motor · ${META.prop_in}" props`],
+  ['Sensors', 'OAK-D Lite · STL-27L · MTF-01P'],
+  ['Checks', `${META.problems.length === 0 ? 'No clashes, no parts in any sensor view' : META.problems.length + ' findings'}`],
+  ['Units', 'mm · X forward, Y left, Z up'],
+  ['Source', 'cad/model5.py · rev 2026-11-14'],
+].map(([k, v]) => `<div>${k}</div><div>${v}</div>`).join('');
+
+const index = document.getElementById('index');
+GROUPS.forEach((g, i) => {
+  g.n = String(i + 1).padStart(2, '0');
+  g.mass = META.groups[g.id];
+  const li = document.createElement('li');
+  li.innerHTML = `<button id="idx-${g.id}" aria-pressed="false"><span class="n">${g.n}</span><span class="t">${g.name}</span><span class="m">${g.mass ? g.mass.toFixed(g.mass < 20 ? 1 : 0) + ' g' : ''}</span></button>`;
+  li.firstChild.addEventListener('click', () => select(selected === g.id ? null : g.id, true));
+  li.firstChild.addEventListener('mouseenter', () => setHover(g.id));
+  li.firstChild.addEventListener('mouseleave', () => setHover(null));
+  index.appendChild(li);
+});
+
+const detail = document.getElementById('detail');
+function showDetail(id) {
+  const g = GROUPS.find(x => x.id === id);
+  if (!g) {
+    detail.innerHTML = `<p class="kicker"><span>Whole drone</span></p>
+      <h2>${fmt(META.mass)} g ready to fly</h2>
+      <p class="role">That's ${fmt(META.mass_margin)} g with a 10% margin, under the team's 950 g limit. The centre of mass sits ${Math.abs(META.com[0]).toFixed(0)} mm ${META.com[0] >= 0 ? 'ahead of' : 'behind'} centre and ${Math.abs(META.com[2]).toFixed(1)} mm ${META.com[2] >= 0 ? 'above' : 'below'} the props.</p>
+      <dl>
+        <dt>Ahead</dt><dd>OAK-D Lite stereo depth, 73° × 58°</dd>
+        <dt>All round</dt><dd>STL-27L lidar plane, ${META.lidar_z} mm above the props</dd>
+        <dt>Below</dt><dd>MTF-01P flow and range, ${META.flow_height} mm off the ground</dd>
+        <dt>Computer</dt><dd>Raspberry Pi 5, ROS 2 Jazzy, PX4 v1.17</dd>
+        <dt>Inertia</dt><dd>${META.inertia.map(v => v.toFixed(4)).join(' / ')} kg m² (roll / pitch / yaw)</dd>
+      </dl>
+      <p class="note">Every sensor here has a matching Gazebo sensor in the sim. Frame plate sizes and some masses are estimates until we check them against the parts.</p>`;
+    return;
+  }
+  detail.innerHTML = `<p class="kicker"><span>${g.n} · ${g.short}</span><button id="close">Clear ✕</button></p>
+    <h2>${g.name}</h2><p class="role">${g.role}</p>
+    <dl>${g.rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}${g.mass ? `<dt>In budget</dt><dd>${g.mass} g, mounts included</dd>` : ''}</dl>
+    <p class="note">${g.note}</p>`;
+  document.getElementById('close').addEventListener('click', () => select(null, true));
+}
+showDetail(null);
+
+// ---------- renderer and scene ----------
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8b2a6, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(260, -320, 700);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -320, right: 320, top: 320, bottom: -320, near: 100, far: 1600 });
+key.shadow.bias = -0.0004;
+key.shadow.normalBias = 0.6;
+scene.add(key);
+
+const camera = new THREE.PerspectiveCamera(30, 1, 2, 12000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 160;
+controls.maxDistance = 2600;
+controls.autoRotateSpeed = 0.7;
+const HOME = new THREE.Vector3(0, 0, -18);
+controls.target.copy(HOME);
+
+const ground = META.ground;
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.2 }));
+shadowPlane.position.z = ground - 0.05;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+const polar = new THREE.PolarGridHelper(420, 16, 6, 96, 0x9d998f, 0xbdb9b0);
+polar.rotation.x = Math.PI / 2;
+polar.position.z = ground;
+polar.material.transparent = true; polar.material.opacity = 0.55;
+scene.add(polar);
+
+// ---------- carbon weave texture ----------
+function carbonTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const tow = 32;
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+    const over = ((i + j) >> 1) % 2 === 0;
+    const g = over ? x.createLinearGradient(i * tow, 0, i * tow + tow, 0) : x.createLinearGradient(0, j * tow, 0, j * tow + tow);
+    g.addColorStop(0, '#0d0e10'); g.addColorStop(0.5, over ? '#3a3c40' : '#2a2c30'); g.addColorStop(1, '#0d0e10');
+    x.fillStyle = g; x.fillRect(i * tow, j * tow, tow, tow);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const weave = carbonTexture();
+
+function planarUV(geo) {
+  const p = geo.attributes.position, n = geo.attributes.normal, uv = new Float32Array(p.count * 2), s = 1 / 22;
+  for (let i = 0; i < p.count; i++) {
+    const flat = Math.abs(n.getZ(i)) > 0.6;
+    uv[2 * i] = (flat ? p.getX(i) : p.getX(i) + p.getY(i)) * s;
+    uv[2 * i + 1] = (flat ? p.getY(i) : p.getZ(i)) * s;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+
+function makeMaterial(key) {
+  const spec = { ...(MAT[key] || MAT.plastic_black) };
+  const carbon = spec.carbon; delete spec.carbon;
+  const m = new THREE.MeshPhysicalMaterial(spec);
+  if (carbon) { m.map = weave; m.color.set(0xffffff); m.roughness = 0.38; }
+  m.userData.base = { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite };
+  return m;
+}
+
+// ---------- the model ----------
+const nodes = [];          // { mesh, group, explode: Vector3 }
+const modelRoot = new THREE.Group();
+scene.add(modelRoot);
+
+function decode(b64) {
+  const s = atob(b64), out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out.buffer;
+}
+
+function build(gltf) {
+  const root = gltf.scene.getObjectByName('drone5') || gltf.scene.children[0];
+  root.quaternion.identity();
+  root.updateMatrixWorld(true);
+  for (const child of [...root.children]) {
+    const name = child.name;
+    const info = META.nodes[name];
+    if (!info) continue;
+    const geos = [];
+    child.traverse(o => {
+      if (!o.isMesh) return;
+      const g = o.geometry.clone();
+      g.applyMatrix4(o.matrixWorld);
+      for (const a of Object.keys(g.attributes)) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a);
+      if (!g.index) g.setIndex([...Array(g.attributes.position.count).keys()]);
+      geos.push(g);
+    });
+    if (!geos.length) continue;
+    const geo = geos.length > 1 ? mergeGeometries(geos) : geos[0];
+    if (info.mat === 'carbon') planarUV(geo);
+    geo.computeBoundingBox();
+    const mesh = new THREE.Mesh(geo, makeMaterial(info.mat));
+    mesh.castShadow = true; mesh.receiveShadow = info.mat !== 'prop';
+    mesh.userData = { group: info.group, name };
+    modelRoot.add(mesh);
+    nodes.push({ mesh, group: info.group, explode: new THREE.Vector3(...info.explode) });
+  }
+}
+
+// ---------- sensor coverage ----------
+const coverage = { oak: new THREE.Group(), lidar: new THREE.Group(), flow: new THREE.Group() };
+Object.values(coverage).forEach(g => scene.add(g));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function fadeMaterial() {
+  return new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+}
+function rgba(color, alpha) { const c = new THREE.Color(color); return [c.r, c.g, c.b, alpha]; }
+
+function buildCoverage() {
+  const V = META.views, D = Math.PI / 180;
+  { // OAK-D frustum, drawn 0.52 m long
+    const o = V.oak, A = new THREE.Vector3(...o.apex), L = 520;
+    const th = Math.tan(o.hfov / 2 * D), tv = Math.tan(o.vfov / 2 * D), ct = Math.cos(o.tilt * D), st = Math.sin(o.tilt * D);
+    const far = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
+      const x = 1, y = a * th, z = b * tv;
+      return new THREE.Vector3(x * ct - z * st, y, x * st + z * ct).multiplyScalar(L).add(A);
+    });
+    const pos = [], col = [], c0 = rgba(css('--oak'), 0.2), c1 = rgba(css('--oak'), 0.015);
+    for (let i = 0; i < 4; i++) { pos.push(...A.toArray(), ...far[i].toArray(), ...far[(i + 1) % 4].toArray()); col.push(...c0, ...c1, ...c1); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    coverage.oak.add(new THREE.Mesh(g, fadeMaterial()));
+    const lp = []; far.forEach((f, i) => lp.push(A, f, f, far[(i + 1) % 4]));
+    coverage.oak.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lp),
+      new THREE.LineBasicMaterial({ color: css('--oak'), transparent: true, opacity: 0.55 })));
+    coverage.oak.userData.label = { at: far[2].clone().lerp(far[3], 0.5), color: css('--oak'), text: 'OAK-D Lite · 73° × 58°, tilted up 8°<br>drawn to 0.5 m · depth to 12 m' };
+  }
+  { // lidar plane, drawn to 0.42 m
+    const l = V.lidar, R = 380, ring = new THREE.RingGeometry(l.inner, R, 160, 6);
+    const p = ring.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) { const r = Math.hypot(p.getX(i), p.getY(i)); col.push(...rgba(css('--lidar'), 0.11 * (1 - (r - l.inner) / (R - l.inner)) + 0.01)); }
+    ring.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    const plane = new THREE.Mesh(ring, fadeMaterial());
+    const sweep = new THREE.RingGeometry(l.inner, R, 48, 1, 0, 0.9);
+    const sp = sweep.attributes.position, sc = [];
+    for (let i = 0; i < sp.count; i++) { const a = Math.atan2(sp.getY(i), sp.getX(i)); sc.push(...rgba(css('--lidar'), 0.2 * Math.max(0, a / 0.9))); }
+    sweep.setAttribute('color', new THREE.Float32BufferAttribute(sc, 4));
+    const sweepMesh = new THREE.Mesh(sweep, fadeMaterial());
+    const edge = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(
+      [...Array(129).keys()].map(k => new THREE.Vector3(Math.cos(k / 128 * 2 * Math.PI) * R, Math.sin(k / 128 * 2 * Math.PI) * R, 0))),
+      new THREE.LineDashedMaterial({ color: css('--lidar'), dashSize: 8, gapSize: 6, transparent: true, opacity: 0.6 }));
+    edge.computeLineDistances();
+    const g = coverage.lidar; g.position.set(...l.center);
+    g.add(plane, sweepMesh, edge);
+    g.userData.sweep = sweepMesh;
+    g.userData.label = { at: new THREE.Vector3(l.center[0] - R * 0.72, -R * 0.72, l.center[2]), color: css('--lidar'), text: `Lidar plane · 360°, ${META.lidar_z} mm above the props<br>drawn to 0.38 m · range 25 m` };
+  }
+  { // flow cone and range beam, to the ground
+    const f = V.flow, h = f.apex[2] - ground;
+    const cone = (fov, color, a0, a1) => {
+      const geo = new THREE.ConeGeometry(Math.tan(fov / 2 * D) * h, h, 64, 4, true);
+      geo.rotateX(Math.PI / 2);
+      const p = geo.attributes.position, col = [];
+      for (let i = 0; i < p.count; i++) { const t = (h / 2 - p.getZ(i)) / h; col.push(...rgba(color, a0 + (a1 - a0) * t)); }
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+      const m = new THREE.Mesh(geo, fadeMaterial());
+      m.position.set(f.apex[0], f.apex[1], f.apex[2] - h / 2);
+      return m;
+    };
+    coverage.flow.add(cone(f.fov, css('--flow'), 0.32, 0.1), cone(f.range_fov * 2, css('--range'), 0.7, 0.45));
+    const foot = new THREE.Mesh(new THREE.CircleGeometry(Math.tan(f.fov / 2 * D) * h, 64),
+      new THREE.MeshBasicMaterial({ color: css('--flow'), transparent: true, opacity: 0.16, depthWrite: false }));
+    foot.position.set(f.apex[0], 0, ground + 0.2);
+    coverage.flow.add(foot);
+    coverage.flow.userData.label = { at: new THREE.Vector3(f.apex[0] - 70, 0, ground + 18), color: css('--flow'), text: `Flow 42° + range beam<br>${META.flow_height} mm off the ground` };
+  }
+  for (const [k, g] of Object.entries(coverage)) {
+    const el = document.createElement('div');
+    el.className = 'vlabel'; el.style.borderColor = g.userData.label.color; el.innerHTML = g.userData.label.text;
+    document.body.appendChild(el); g.userData.el = el;
+    const on = document.querySelector(`.chip[data-view="${k}"]`).getAttribute('aria-pressed') === 'true';
+    g.visible = on;
+  }
+}
+document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+  const on = b.getAttribute('aria-pressed') !== 'true';
+  b.setAttribute('aria-pressed', on); coverage[b.dataset.view].visible = on;
+}));
+
+// ---------- pins ----------
+const pins = GROUPS.map(g => {
+  const el = document.createElement('div');
+  el.className = 'pin'; el.innerHTML = `<b>${g.n}</b><span>${g.name}</span>`;
+  el.addEventListener('click', e => { e.stopPropagation(); select(selected === g.id ? null : g.id, true); });
+  el.addEventListener('mouseenter', () => setHover(g.id));
+  el.addEventListener('mouseleave', () => setHover(null));
+  document.body.appendChild(el);
+  return { g, el, at: new THREE.Vector3(...g.anchor) };
+});
+
+// ---------- explode ----------
+let explodeNow = 0, explodeGoal = 0;
+const slider = document.getElementById('explode'), explodeBtn = document.getElementById('explodeBtn');
+slider.addEventListener('input', () => { explodeGoal = explodeNow = +slider.value; syncExplodeBtn(); });
+explodeBtn.addEventListener('click', () => { explodeGoal = explodeGoal > 0.5 ? 0 : 1; syncExplodeBtn(); });
+function syncExplodeBtn() { const on = explodeGoal > 0.5; explodeBtn.setAttribute('aria-pressed', on); explodeBtn.textContent = on ? 'Assemble' : 'Explode'; }
+function groupOffset(id) {
+  const n = nodes.find(x => x.group === id);
+  return n ? n.explode.clone().multiplyScalar(explodeNow) : new THREE.Vector3();
+}
+
+// ---------- selection ----------
+let selected = null, hovered = null;
+function setHover(id) {
+  hovered = id;
+  GROUPS.forEach(g => document.getElementById('idx-' + g.id).classList.toggle('hover', g.id === id));
+  pins.forEach(p => p.el.classList.toggle('on', p.g.id === id || p.g.id === selected));
+  renderer.domElement.style.cursor = id ? 'pointer' : '';
+}
+function select(id, focus) {
+  selected = id;
+  for (const n of nodes) {
+    const m = n.mesh.material, b = m.userData.base, ghost = id && n.group !== id;
+    m.transparent = ghost ? true : b.transparent;
+    m.opacity = ghost ? 0.12 : b.opacity;
+    m.depthWrite = !ghost;
+    n.mesh.castShadow = !ghost;
+    m.needsUpdate = true;
+  }
+  GROUPS.forEach(g => document.getElementById('idx-' + g.id).setAttribute('aria-pressed', g.id === id));
+  pins.forEach(p => { p.el.classList.toggle('on', p.g.id === id); p.el.classList.toggle('dim', !!id && p.g.id !== id); });
+  showDetail(id);
+  if (focus) {
+    if (id) {
+      const box = new THREE.Box3();
+      nodes.filter(n => n.group === id).forEach(n => { n.mesh.updateMatrixWorld(); box.expandByObject(n.mesh); });
+      const c = box.getCenter(new THREE.Vector3()), r = Math.max(70, box.getSize(new THREE.Vector3()).length() * 0.9);
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      fly(c, c.clone().add(dir.multiplyScalar(r / Math.tan(camera.fov / 2 * Math.PI / 180) * 1.15)));
+    } else {
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      fly(HOME, HOME.clone().add(dir.multiplyScalar(homeDistance())));
+    }
+  }
+}
+addEventListener('keydown', e => { if (e.key === 'Escape') select(null, true); });
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+function pick(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(nodes.map(n => n.mesh), false)
+    .find(h => !h.object.material.transparent || h.object.material.opacity > 0.5);
+  return hit ? hit.object.userData.group : null;
+}
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+  const id = pick(e);
+  select(id && id !== selected ? id : null, true);
+});
+let lastMove = 0;
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.buttons || performance.now() - lastMove < 40) return;
+  lastMove = performance.now();
+  const id = pick(e);
+  if (id !== hovered) setHover(id);
+});
+renderer.domElement.addEventListener('pointerleave', () => setHover(null));
+
+// ---------- camera ----------
+const CAMS = { iso: [1.0, -1.3, 0.75], front: [1, 0, 0.06], side: [0, -1, 0.06], top: [0.0001, -0.0001, 1], below: [0.7, -0.9, -0.55] };
+function homeDistance() { return (innerWidth / innerHeight < 1 ? 1250 : 980) * (1 + explodeGoal * 0.3); }
+let flight = null;
+function fly(target, pos, ms = 750) {
+  if (reduced) { controls.target.copy(target); camera.position.copy(pos); return; }
+  flight = { t0: performance.now(), ms, a: [controls.target.clone(), camera.position.clone()], b: [target.clone(), pos.clone()] };
+}
+document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => {
+  const d = new THREE.Vector3(...CAMS[b.dataset.cam]).normalize();
+  const t = selected ? controls.target.clone() : HOME;
+  const dist = selected ? camera.position.distanceTo(controls.target) : homeDistance();
+  fly(t, t.clone().add(d.multiplyScalar(dist)));
+}));
+const spin = document.getElementById('spin');
+spin.addEventListener('click', () => { controls.autoRotate = !controls.autoRotate; spin.setAttribute('aria-pressed', controls.autoRotate); });
+controls.addEventListener('start', () => { flight = null; });
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  // Centre the model in the space the panels leave free.
+  camera.setViewOffset(innerWidth, innerHeight, 0, innerWidth > 860 ? 60 : 120, innerWidth, innerHeight);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+camera.position.copy(HOME).add(new THREE.Vector3(...CAMS.iso).normalize().multiplyScalar(homeDistance()));
+
+// ---------- frame loop ----------
+const tmp = new THREE.Vector3();
+function place(el, world, clamp = false) {
+  tmp.copy(world).project(camera);
+  let x = (tmp.x + 1) / 2 * innerWidth, y = (1 - tmp.y) / 2 * innerHeight;
+  if (clamp) {
+    const w = el.offsetWidth / 2 + 30, h = el.offsetHeight / 2 + 30;
+    x = Math.min(Math.max(x, w), innerWidth - w); y = Math.min(Math.max(y, h), innerHeight - h);
+  }
+  el.style.display = tmp.z < 1 && (clamp || (Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1)) ? '' : 'none';
+  el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+}
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (flight) {
+    const t = Math.min(1, (now - flight.t0) / flight.ms), k = ease(t);
+    controls.target.lerpVectors(flight.a[0], flight.b[0], k);
+    camera.position.lerpVectors(flight.a[1], flight.b[1], k);
+    if (t >= 1) flight = null;
+  }
+  if (explodeNow !== explodeGoal) {
+    const gap = explodeGoal - explodeNow;
+    explodeNow = Math.abs(gap) < 0.001 || reduced ? explodeGoal : explodeNow + gap * (1 - Math.exp(-dt / 0.22));
+    slider.value = explodeNow;
+  }
+  for (const n of nodes) n.mesh.position.copy(n.explode).multiplyScalar(explodeNow);
+  controls.update();
+  if (coverage.lidar.userData.sweep && !reduced) coverage.lidar.userData.sweep.rotation.z = (now / 2400 % 1) * Math.PI * 2;
+  for (const p of pins) place(p.el, tmp.copy(p.at).add(groupOffset(p.g.id)).clone());
+  for (const g of Object.values(coverage)) {
+    if (!g.userData.el) continue;
+    g.userData.el.style.display = g.visible && !selected ? "" : "none";
+    if (g.visible && !selected) place(g.userData.el, g.userData.label.at, true);
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+// ---------- load ----------
+const bar = document.getElementById('bar');
+bar.style.width = '30%';
+setTimeout(() => {
+  const buf = decode(GLB);
+  bar.style.width = '70%';
+  new GLTFLoader().parse(buf, '', gltf => {
+    build(gltf);
+    buildCoverage();
+    bar.style.width = '100%';
+    const load = document.getElementById('loading');
+    load.style.opacity = 0;
+    setTimeout(() => load.remove(), 500);
+    if (!reduced) { explodeNow = 0.55; explodeGoal = 0; }
+    requestAnimationFrame(frame);
+  }, err => { document.querySelector('#loading div').textContent = 'The model could not load: ' + err.message; });
+}, 30);
+</script>
+</body>
+</html>

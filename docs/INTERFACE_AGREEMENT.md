@@ -1,29 +1,24 @@
 # Interface Agreement
 
-Draft, Nov 10 2026. Sensors match `docs/DECISION_LOG.md`. Needs P2's topics and final CAD positions.
+Draft, Nov 14 2026, for the 5" build. Sensors match `docs/DECISION_LOG.md`. Needs P2's topics and the measured positions from the built drone.
 
 ## Connections
 
-From P1's hardware decision log.
-
 | Device | Connects to | Link |
 |---|---|---|
-| OAK-D Lite | Jetson USB 3 | ROS 2 driver on the Jetson |
-| 2 x IMX219-200 | Jetson CSI ports (22-pin to 15-pin cables) | Both CSI ports used, so any further camera must be USB |
-| STL-27L | Jetson USB, through a UART adapter | ROS 2 driver on the Jetson |
-| Flight controller TELEM1 | Jetson 40-pin header UART | ROS 2 over uXRCE-DDS, 921600 baud |
-| Flight controller USB | Jetson | MAVLink forwarded to QGC |
+| OAK-D Lite | Raspberry Pi 5 USB 3 | ROS 2 driver on the Pi. Set `usb_max_current_enable=1` |
+| STL-27L | Raspberry Pi 5 USB, through a UART adapter | ROS 2 driver on the Pi |
+| Flight controller TELEM1 | Raspberry Pi 5 GPIO UART | ROS 2 over uXRCE-DDS, 921600 baud |
+| Flight controller USB | Raspberry Pi 5 | MAVLink forwarded to QGC over Wi-Fi; there's no SiK radio |
 | MTF-01P | Flight controller TELEM2 | MAVLink, 115200 baud |
 | ELRS receiver | Flight controller RC | |
 | GPS (optional) | Flight controller GPS1 | |
-| SiK radio | Flight controller URT6 / TELEM3 | Keep one spare port for the optional upward rangefinder |
+| Spare port | Flight controller | Keep one for the optional upward rangefinder |
 
 ## Frames
 
 ```
 map -> odom -> base_link -> oakd_link -> oakd_left_optical
-                         -> side_left_link
-                         -> side_right_link
                          -> lidar_link
                          -> flow_link
                          -> lidar_sensor_link
@@ -41,7 +36,7 @@ map -> odom -> base_link -> oakd_link -> oakd_left_optical
 
 ## Sensor topics
 
-Sim rates were measured on Nov 9 2026, in sim time from message timestamps, on `p3/perception-main`.
+Sim rates were measured on Nov 14 2026, in sim time from message timestamps, on `p3/perception-main`.
 
 | Topic | Type | Rate | Owner |
 |---|---|---|---|
@@ -51,14 +46,13 @@ Sim rates were measured on Nov 9 2026, in sim time from message timestamps, on `
 | `/oakd/left/image` | `sensor_msgs/Image` (mono8, 640 x 480) | 30 Hz | P3 |
 | `/oakd/left/camera_info` | `sensor_msgs/CameraInfo` (fx 432.5 px) | 30 Hz | P3 |
 | `/oakd/imu` | `sensor_msgs/Imu` | 250 Hz | P3 |
-| `/side_left/image`, `/side_right/image` | `sensor_msgs/Image` (rgb8, 820 x 616 in sim, 1640 x 1232 real) | 30 Hz | P3 |
 | `/scan` | `sensor_msgs/LaserScan` (2160 points, 0.167° apart) | 10 Hz | P3 |
 | `/range/scan` (sim checks only) | `sensor_msgs/LaserScan` | 50 Hz | P3 |
 | `/clock` (sim only) | `rosgraph_msgs/Clock` | | P3 |
 
 QoS: subscribe to the camera topics with reliable. Best effort dropped depth from 30 Hz to about 4.5 Hz. Subscribe to `/fmu/out` topics with best effort.
 
-On the real drone, the MTF-01P connects to PX4 over UART, so flow and range don't go through ROS 2. In the sim, PX4 also reads the lidar directly as `obstacle_distance` (72 sectors of 5°); on the real drone the lidar connects to the Jetson.
+On the real drone, the MTF-01P connects to PX4 over UART, so flow and range don't go through ROS 2. In the sim, PX4 also reads the lidar directly as `obstacle_distance` (72 sectors of 5°); on the real drone the lidar connects to the Pi.
 
 ## Perception outputs (proposed)
 
@@ -76,23 +70,21 @@ On the real drone, the MTF-01P connects to PX4 over UART, so flow and range don'
 
 ## Static transforms
 
-From P1's layout, through `cad/skeleton.py`. `base_link` sits 36 mm below the prop plane, as in the sim.
+From `cad/skeleton.py`, and the same in the sim model `sim/perception/models/fiveinch_perception`. `base_link` sits 26.9 mm below the prop plane, as in P1's `fiveinch` model.
 
 | Parent -> child | x y z (m) | roll pitch yaw (rad) |
 |---|---|---|
-| `base_link` -> `oakd_link` | 0.0750 0.0000 -0.0140 | 0 -0.1396 0 |
+| `base_link` -> `oakd_link` | 0.0700 0.0000 -0.0351 | 0 -0.1396 0 |
 | `oakd_link` -> `oakd_left_optical` | 0.0000 0.0375 0.0000 | -1.5708 0 -1.5708 |
-| `base_link` -> `side_left_link` | 0.0000 0.0160 0.1360 | 0 -0.4363 1.8326 |
-| `base_link` -> `side_right_link` | 0.0000 -0.0160 0.1360 | 0 -0.4363 -1.8326 |
-| `base_link` -> `lidar_link` | 0.0000 0.0000 0.1740 | 0 0 0 |
-| `base_link` -> `flow_link` | -0.0500 -0.0420 0.0140 | 0 0 0 |
-| `base_link` -> `lidar_sensor_link` | -0.0500 -0.0420 0.0140 | 0 1.5708 0 |
+| `base_link` -> `lidar_link` | -0.0620 0.0000 0.0999 | 0 0 0 |
+| `base_link` -> `flow_link` | -0.0630 0.0000 -0.0146 | 0 0 0 |
+| `base_link` -> `lidar_sensor_link` | -0.0630 0.0000 -0.0146 | 0 1.5708 0 |
 
-Negative pitch tilts a camera up. The flow sensor uses P1's height here; `cad/` finds that inside the rear-right arm and places it 19 mm lower, at z -0.0050.
+Negative pitch tilts a camera up. `oakd_link` is the centre of the OAK-D Lite's front face, `lidar_link` is the scan plane and `flow_link` is the MTF-01P's lens face.
 
 ## Known differences to fix
 
-- The sim's camera and IMU messages use the frame ID `oakd_link`, not `oakd_left_optical`, and the side cameras use Gazebo's own names. P2 and P3 need to fix this before RTAB-Map runs.
+- The sim's camera and IMU messages use the frame ID `oakd_link`, not `oakd_left_optical`. P2 and P3 need to fix this before RTAB-Map runs.
 - The sim's mono and depth views share one point, while the real left lens sits 37.5 mm to the side.
 - In the sim, the lidar's link is called `link` and its sensor `lidar_2d_v2`, because PX4 only reads that name. In ROS 2 it is `/scan`.
 - The sim's default world has a plain floor and sky, so visual SLAM needs a textured world that follows P-12.
