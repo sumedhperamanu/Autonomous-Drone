@@ -5,6 +5,7 @@ import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 
+
 class State(Enum):
     IDLE = 'IDLE'
     TAKEOFF = 'TAKEOFF'
@@ -14,11 +15,13 @@ class State(Enum):
     RTL = 'RTL'
     ABORT = 'ABORT'
 
+
 OFFBOARD_STATES = (State.TAKEOFF, State.SEARCH, State.APPROACH)
 LANDING_STATES = (State.LAND, State.RTL, State.ABORT)
 
+
 class Mission(Node):
-    """Mission Skeleton: IDLE, TAKEOFF, SEARCH, APPROACH, LAND, RTL, ABORT"""
+    """Mission Skeleton: IDLE, TAKEOFF, SEARCH, APPROACH, LAND, RTL, ABORT."""
 
     def __init__(self):
         super().__init__('mission')
@@ -39,11 +42,11 @@ class Mission(Node):
         self.get_logger().info('Mission ready in IDLE. Call mission/start to fly.')
 
     def seconds_in_state(self):
-        """Return how long we have been in the current state"""
-        return(self.get_clock().now() - self.state_start).nanoseconds / 1e9
+        """Return how long we have been in the current state."""
+        return (self.get_clock().now() - self.state_start).nanoseconds / 1e9
 
     def change_state(self, new_state, reason):
-        """Switch state, log why, and run the new state's one-time entry action"""
+        """Switch state, log why, and run the new state's one-time entry action."""
         self.get_logger().info(f'{self.state.value} -> {new_state.value}: {reason}')
         self.state = new_state
         self.state_start = self.get_clock().now()
@@ -55,42 +58,45 @@ class Mission(Node):
             self.px4.return_home()
 
     def on_start(self, request, response):
-        """Start the mission, only from IDLE and only with PX4 data flowing"""
+        """Start the mission, only from IDLE and only with PX4 data flowing."""
         if self.state != State.IDLE:
             response.success = False
             response.message = f'Cannot start from {self.state.value}'
         elif not self.px4.has_data():
             response.success = False
             response.message = 'No status or odometry from PX4 yet'
+        elif self.px4.odometry_age() > self.odometry_timeout:
+            response.success = False
+            response.message = 'Odometry is stale; is PX4 running?'
         elif self.px4.is_armed():
             response.success = False
-            response.message = "Drone is still armed; land it first"
+            response.message = 'Drone is still armed; land it first'
         else:
             north, east, _ = self.px4.position()
             self.hold_point = (north, east, -self.altitude)
             self.change_state(State.TAKEOFF, 'start requested')
             response.success = True
-            response.message = "Taking off"
+            response.message = 'Taking off'
         return response
-        
+
     def on_rtl(self, request, response):
-        """Return home, only while the mission is flying in offboard"""
+        """Return home, only while the mission is flying in offboard."""
         response.success = self.state in OFFBOARD_STATES
         if response.success:
             self.change_state(State.RTL, 'return home requested')
         response.message = f'State is now {self.state.value}'
         return response
-    
+
     def on_abort(self, request, response):
-        """Stop the mission and land where we are, only while flying in offboard"""
+        """Stop the mission and land where we are, only while flying in offboard."""
         response.success = self.state in OFFBOARD_STATES
         if response.success:
-                self.change_state(State.ABORT, 'abort requested')
+            self.change_state(State.ABORT, 'abort requested')
         response.message = f'State is now {self.state.value}'
         return response
 
     def tick(self):
-        """Run ten times a second: safety checks first, then the current state's work"""
+        """Run ten times a second: safety checks first, then the current state's work."""
         if self.state in OFFBOARD_STATES:
             if self.px4.odometry_age() > self.odometry_timeout:
                 self.change_state(State.ABORT, 'odometry lost')
@@ -123,8 +129,9 @@ class Mission(Node):
             if not self.px4.is_armed() and self.seconds_in_state() > 2.0:
                 self.change_state(State.IDLE, 'landed and disarmed')
 
+
 def main(args=None):
-    """Start the mission node and keep it running until Ctrl+C"""
+    """Start the mission node and keep it running until Ctrl+C."""
     rclpy.init(args=args)
     node = Mission()
     try:
@@ -135,5 +142,6 @@ def main(args=None):
         node.destroy_node()
         rclpy.try_shutdown()
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()

@@ -2,8 +2,9 @@ from drone_px4_interface.px4_commander import Px4Commander
 import rclpy
 from rclpy.node import Node
 
+
 class OffboardTakeoff(Node):
-    """Arm, climb to a set height in offboard mode, takeoff, hold, then land"""
+    """Arm, climb to a set height in offboard mode, takeoff, hold, then land."""
 
     def __init__(self):
         super().__init__('offboard_takeoff')
@@ -17,17 +18,17 @@ class OffboardTakeoff(Node):
         self.create_timer(0.1, self.tick)
 
     def seconds_in_phase(self):
-        """Return how long we have been in the current phase"""
+        """Return how long we have been in the current phase."""
         return (self.get_clock().now() - self.phase_start).nanoseconds / 1e9
 
     def change_phase(self, phase):
-        """Log and switch to a new phase"""
+        """Log and switch to a new phase."""
         self.get_logger().info(f'{self.phase} -> {phase}')
         self.phase = phase
         self.phase_start = self.get_clock().now()
 
     def tick(self):
-        """Runs ten times a second; keeps the heartbeat going and step through phases"""
+        """Run ten times a second: keep the heartbeat going and step through phases."""
         if self.phase in ('warmup', 'climb', 'hold'):
             self.px4.send_heartbeat()
             self.px4.send_position(0.0, 0.0, -self.target_altitude)
@@ -41,7 +42,7 @@ class OffboardTakeoff(Node):
                 self.px4.start_offboard()
                 self.px4.arm()
                 self.change_phase('climb')
-        elif self.phase == "climb":
+        elif self.phase == 'climb':
             if self.px4.altitude() >= self.target_altitude - 0.1:
                 self.change_phase('hold')
             elif self.seconds_in_phase() > self.climb_timeout:
@@ -56,10 +57,10 @@ class OffboardTakeoff(Node):
             if not self.px4.is_armed() and self.seconds_in_phase() > 2.0:
                 self.get_logger().info('Landed and disarmed. Done.')
                 self.change_phase('done')
-            
-def main(args=None):
-    """Start the node and keep it running until Ctrl + C"""
 
+
+def main(args=None):
+    """Start the node and keep it running until Ctrl + C."""
     rclpy.init(args=args)
     node = OffboardTakeoff()
     try:
@@ -69,6 +70,7 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
+
 
 if __name__ == '__main__':
     main()

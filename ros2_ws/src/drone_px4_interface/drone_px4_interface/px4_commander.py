@@ -1,13 +1,13 @@
-"""Helper that talks to PX4: setpoints, commands, status, and odometry"""
+"""Helper that talks to PX4: setpoints, commands, status, and odometry."""
 
 from px4_msgs.msg import (
     OffboardControlMode, TrajectorySetpoint, VehicleCommand, VehicleOdometry, VehicleStatus)
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
 PX4_QOS = QoSProfile(
-    reliability = ReliabilityPolicy.BEST_EFFORT,
-    durability = DurabilityPolicy.TRANSIENT_LOCAL,
-    history = HistoryPolicy.KEEP_LAST,
+    reliability=ReliabilityPolicy.BEST_EFFORT,
+    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+    history=HistoryPolicy.KEEP_LAST,
     depth=1
 )
 
@@ -19,8 +19,9 @@ DEFAULT_TOPICS = {
     'vehicle_odometry': '/fmu/out/vehicle_odometry'
 }
 
+
 class Px4Commander:
-    """Send setpoints and commands to PX4, and keep its latest status and position"""
+    """Send setpoints and commands to PX4, and keep its latest status and position."""
 
     def __init__(self, node):
         self.node = node
@@ -44,51 +45,51 @@ class Px4Commander:
 
     def _on_status(self, msg):
         self.status = msg
-    
+
     def _on_odometry(self, msg):
         self.odometry = msg
         self.odometry_time = self.node.get_clock().now()
-    
+
     def _now_us(self):
         return int(self.node.get_clock().now().nanoseconds / 1000)
 
-    #------What PX4 is doing-------#
+    # ----- What PX4 is doing -----
 
     def has_data(self):
-        """Return True once both odometry and status data have returned"""
+        """Return True once both odometry and status data have returned."""
         return self.status is not None and self.odometry is not None
-    
+
     def is_armed(self):
-        """Return True if PX4 reports the motors are armed"""
+        """Return True if PX4 reports the motors are armed."""
         return self.status is not None and (
             self.status.arming_state == VehicleStatus.ARMING_STATE_ARMED)
 
     def in_offboard(self):
-        """Return True if PX4 is currently in offboard mode"""
+        """Return True if PX4 is currently in offboard mode."""
         return self.status is not None and (
             self.status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD)
 
     def position(self):
-        """Return (North, East, Down) in meters from the takeoff point"""
+        """Return (North, East, Down) in meters from the takeoff point."""
         north, east, down = self.odometry.position
         return float(north), float(east), float(down)
 
     def altitude(self):
-        """Return height above the takeoff point in meters (0 if unknown)"""
+        """Return height above the takeoff point in meters (0 if unknown)."""
         if self.odometry is None:
             return 0.0
         return -float(self.odometry.position[2])
 
     def odometry_age(self):
-        """Returns seconds since last odometry message (very large if none yet)"""
+        """Return seconds since last odometry message (very large if none yet)."""
         if self.odometry_time is None:
             return 1e9
         return (self.node.get_clock().now() - self.odometry_time).nanoseconds / 1e9
 
-    #--------Sending to PX4--------#
+    # ----- Sending to PX4 -----
 
     def send_heartbeat(self):
-        """Tell PX4 we control position; must be sent at 2Hz or faster"""
+        """Tell PX4 we control position; must be sent at 2Hz or faster."""
         msg = OffboardControlMode()
         msg.position = True
         msg.velocity = False
@@ -99,7 +100,7 @@ class Px4Commander:
         self.mode_pub.publish(msg)
 
     def send_position(self, north, east, down, yaw=0.0):
-        """Ask PX4 to fly to a point (meters, NED frame), with a heading (radians)"""
+        """Ask PX4 to fly to a point (meters, NED frame), with a heading (radians)."""
         msg = TrajectorySetpoint()
         msg.position = [float(north), float(east), float(down)]
         msg.yaw = float(yaw)
@@ -107,7 +108,7 @@ class Px4Commander:
         self.setpoint_pub.publish(msg)
 
     def send_command(self, command, param1=0.0, param2=0.0):
-        """Send one vehicle command to PX4"""
+        """Send one vehicle command to PX4."""
         msg = VehicleCommand()
         msg.command = command
         msg.param1 = float(param1)
@@ -121,17 +122,17 @@ class Px4Commander:
         self.command_pub.publish(msg)
 
     def arm(self):
-        """Arm the motors"""
+        """Arm the motors."""
         self.send_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 1.0)
 
     def start_offboard(self):
-        """Switch PX4 to offboard mode"""
+        """Switch PX4 to offboard mode."""
         self.send_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 6.0)
 
     def land(self):
-        """Land where the drone is now"""
+        """Land where the drone is now."""
         self.send_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
 
     def return_home(self):
-        """Fly back to the takeoff point and land"""
+        """Fly back to the takeoff point and land."""
         self.send_command(VehicleCommand.VEHICLE_CMD_NAV_RETURN_TO_LAUNCH)
