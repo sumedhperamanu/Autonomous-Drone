@@ -11,6 +11,7 @@ Date: 2026-11-04 · Updated: 2026-11-15 · Owner: P2 · Status: accepted in the 
 - **Power:** Matek BEC12S-PRO set to **12 V**, dedicated to the Jetson, through a 5.5 × 2.5 mm right-angle barrel pigtail (22 AWG or thicker), centre positive. 60 W capacity against ~35 W worst-case draw (Jetson up to 25 W plus the OAK-D Lite, D500 and cameras it powers). Needs ≥ 14 V in for a steady 12 V; near the end of a 4S pack its output sags to ~11 V, still inside the 9–20 V range.
 - **Storage:** used 500–512 GB NVMe SSD, M.2 2280, 95%+ health (era.ca, $47), in the dev kit's M.2 slot. Install JetPack 7.2 (Ubuntu 24.04) straight onto it with NVIDIA's unified installer ISO from a USB stick (8 GB or larger); the Orin Nano dev kit no longer has an SD card image. No microSD is bought.
 - **Telemetry:** the dev kit's Wi-Fi replaces the SiK radio (see Ports).
+- **Budget (open):** the Nov 14 parts list is $2,036 in parts and $2,341–2,381 CAD all in; the Jetson swap is about $312 of that. The original spec was $700 and a later working figure $1,200–1,500 CAD. The team needs to agree the budget again.
 Fallback, in order:
 1. Reduce load in software: smaller images, lower frame rates, fewer topics recorded in flight, side-camera detection on the GPU, or cuVSLAM on the GPU instead of RTAB-Map odometry (see 0001).
 2. Orin NX 16 GB, only if Day 6 measurements show the Nano Super can't carry the load **and** the team approves the extra cost (module US$999 at NVIDIA's bulk price since July 2026).
@@ -19,23 +20,23 @@ Replaces the Raspberry Pi 5 in the Nov 10 "cheaper build with Pi 5" parts list.
 ## Requirements
 Load estimate for everything running at once in flight, at **full settings**. Built from P3's measurements (PR #8, `bench/pi5`). The Jetson's cores are the same speed as the Pi 5's (Geekbench 6 single-core 778 vs 774), so per-core numbers carry over 1:1. Replace with measured Jetson values on Day 6.
 
-| Program running in flight | Owner | Jetson cores (of 6) | Source |
-|---|---|---|---|
-| uXRCE-DDS agent + D500 driver | P2/P3 | 0.1–0.2 | Estimate |
-| mavlink-router (MAVLink to QGC over Wi-Fi) | P2 | < 0.05 | Estimate |
-| Mission state machine, planner, offboard control | P2 | 0.1–0.2 | Estimate |
-| OAK-D Lite driver (depth on camera) | P3 | 0.1–0.3 | Estimate |
-| Receiving full-size depth + mono images at 30 Hz | P3 | 0.45–0.65 | Measured (PR #8) |
-| Obstacle perception: 640 × 480 depth + lidar → tracked objects → dodge decision | P3/P2 | ~0.75 | Measured (PR #8): 24.7 ms a frame at 30 Hz |
-| Side cameras ×2 at 1640 × 1232, 30 fps: hardware ISP capture + motion/looming detection on the GPU | P3 | 0.3–0.5 | Estimate; to be added to P3's benchmark |
-| SLAM odometry: RTAB-Map 320 × 240 at 15 Hz (or cuVSLAM on the GPU) | P2 | 0.2–0.6 | Published Pi 5 measurement |
-| SLAM map update, once a second | P2 | 0.1–0.4 | Published Pi 5 measurement, worst case |
-| Linux, ROS 2, logging (no raw images recorded in flight) | — | 0.2–0.4 | Estimate |
-| **Total** | | **about 2.3–4.0 of 6** | 2–3.7 cores spare |
+| Program running in flight | Owner | Jetson cores (of 6) | Memory (GB) | Source |
+|---|---|---|---|---|
+| uXRCE-DDS agent + D500 driver | P2/P3 | 0.1–0.2 | 0.1 | Estimate |
+| mavlink-router (MAVLink to QGC over Wi-Fi) | P2 | < 0.05 | < 0.05 | Estimate |
+| Mission state machine, planner, offboard control | P2 | 0.1–0.2 | 0.1 | Estimate |
+| OAK-D Lite driver (depth on camera) | P3 | 0.1–0.3 | 0.3 | Estimate |
+| Receiving full-size depth + mono images at 30 Hz | P3 | 0.45–0.65 | 0.1–0.2 | Measured (PR #8) |
+| Obstacle perception: 640 × 480 depth + lidar → tracked objects → dodge decision | P3/P2 | ~0.75 | 0.3–0.5 | Measured (PR #8): 24.7 ms a frame at 30 Hz |
+| Side cameras ×2 at 1640 × 1232, 30 fps: hardware ISP capture + motion/looming detection on the GPU | P3 | 0.3–0.5 | 0.3–0.5 | Estimate; to be added to P3's benchmark |
+| SLAM odometry: RTAB-Map 320 × 240 at 15 Hz (or cuVSLAM on the GPU) | P2 | 0.2–0.6 | 0.2–0.3 | Published Pi 5 measurement |
+| SLAM map update, once a second, memory bounded | P2 | 0.1–0.4 | 0.8–1.5 | Published Pi 5 measurement, worst case |
+| Linux, ROS 2, logging (no raw images recorded in flight) | — | 0.2–0.4 | 1.0 | Estimate |
+| **Total** | | **about 2.3–4.0 of 6** | **about 3.2–4.5 of 8** | 2–3.7 cores spare |
 
-Memory: about 3.5–5.5 GB of 8 GB (shared with the GPU), growing with the map. Measure on Day 6.
+Memory is shared with the GPU, and the map grows over a flight until its memory bound. Measure both on Day 6.
 
-No marker (AprilTag) detection: dropped from the project.
+This table replaces the earlier rough estimate (5–8 cores; 3.9–6.1 without the LD19 and AprilTag rows). There is no LD19 and no marker (AprilTag) detection in this build; the D500 is the only lidar.
 
 Minimum spec:
 - **CPU:** enough cores for the full-settings load above with at least 0.75 core spare (P3's pass mark). That needs more than the Pi 5's 4 cores.
@@ -92,7 +93,7 @@ P3's benchmark (PR #8) shows the Pi 5 fits a **reduced** setup: 1.8–2.9 of 4 c
 | Cost difference in the parts list | — | about $312 more (~$78 each for 4, ~$104 for 3) |
 | Mass / hover time | — | ~120 g heavier, ~1.5 min less hover |
 
-Speed limits scale with detection distance (v = x / T, Dodge Analysis); approximate. Only the Jetson meets the proposed P-13 limits.
+Speed limits scale with detection distance (v = x / T, Dodge Analysis); approximate. Only the Jetson meets the proposed P-13 limits. P-13 (moving obstacles) is proposed, not yet in the perception requirements; the team needs to agree it.
 
 ### Other options considered
 - **RK3588 board** (~$210 CAD if in stock): ~87% of the Jetson's CPU at Pi 5 cost, but no CUDA (no cuVSLAM, no GPU side-camera detection), community-maintained Ubuntu, and unreliable IMX219 support. Rejected on software and camera risk.
@@ -101,10 +102,11 @@ Speed limits scale with detection distance (v = x / T, Dodge Analysis); approxim
 - **Compact third-party carriers** (Seeed J401, Waveshare): ~US$100–200 plus a module; JetPack 7.2 support depends on the vendor.
 ## Effects on other people's work
 - **P1, power:** BEC12S-PRO at 12 V, dedicated to the Jetson. Measure its output and the pigtail's polarity (centre positive) with a multimeter before connecting; the dev kit has no reverse-polarity protection.
-- **P1, mass:** the 1,383 g estimate assumed a 567 g battery, GPS and the SiK radio. The build now has one Powerhobby 4S 5200 mAh 50C pack (listed as 473 g or 567 g; weigh it), no SiK (~15–25 g less) and GPS optional. Rerun eCalc at the measured weight with ~2–2.5 A electronics; update sim body mass with the 320 mm spacing and 4S inertia changes.
+- **P1, mass:** all-up estimate 1,383 g (Dodge Analysis; used in P1's v2 sim). It assumed a 567 g battery, GPS and the SiK radio. The build now has one Powerhobby 4S 5200 mAh 50C pack (listed as 473 g or 567 g; weigh it), no SiK (~15–25 g less) and GPS optional. Rerun eCalc at the measured weight with ~2–2.5 A electronics; update sim body mass with the 320 mm spacing and 4S inertia changes.
 - **P1, parameters (Wi-Fi telemetry):** set `NAV_DLL_ACT` to disabled or hold, so a Wi-Fi drop doesn't trigger a failsafe; the RC-loss failsafe (`NAV_RCL_ACT`) covers the real emergency. Set `COM_OBL_RC_ACT` to land or hold, in case the Jetson stops sending offboard commands.
 - **P1, ports:** TELEM1 ROS 2 and USB MAVLink unchanged; TELEM2 is now free. Rename "Pi 5" to "companion" in params/README. The Jetson's UART is `/dev/ttyTHS1` (P2, Day 8).
-- **P3, benchmark:** add the two side cameras to `perception_load.py`, report detection range alongside timing, and run it on the Jetson on Day 6.
+- **P3, benchmark:** add the two side cameras to `perception_load.py`, report detection range alongside timing, and run it on the Jetson on Day 6. The Pi 5 numbers in `bench/pi5` are why the Pi was considered and not picked (see "Why the Jetson over the Pi 5").
+- **P3, decision log:** the log on `p3/interface-agreement` (Nov 14) still describes a 5" drone with a Pi 5 and "no Jetson in this build". Update it to the 7" with the Jetson to match this record.
 - **P1/P3, frame:** the dev kit needs a custom top plate on dampers with fan airflow; it is larger than the 30.5 mm stack mounting. Mount the Wi-Fi antennas off the carbon plates, angled differently, ≥ 5 cm from the ELRS antenna.
 ## Risks
 - **Jetson stock and import costs:** dev kits have been out of stock in many places since the price rise. Mitigation: order early; compare Canadian sellers, used kits and the education discount.

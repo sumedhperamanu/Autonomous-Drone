@@ -10,3 +10,4 @@ Locked stack (please install exactly these):
 - OAK-D Lite driver: depthai-ros for Jazzy (version TBD, P3)
 - D500 lidar driver: LDROBOT's ROS 2 driver for the STL-19P (version TBD, P3)
 - MAVLink over Wi-Fi: mavlink-router (Jetson only)
+- SLAM: ros-jazzy-rtabmap-ros (apt; last layer of the dev container's Dockerfile)
