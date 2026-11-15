@@ -101,8 +101,9 @@ class Mission(Node):
             if self.px4.odometry_age() > self.odometry_timeout:
                 self.change_state(State.ABORT, 'odometry lost')
                 return
-            if self.state != State.TAKEOFF and not self.px4.in_offboard():
-                self.change_state(State.IDLE, 'PX4 left offboard: pilot or failsafe in control')
+            warming_up = self.state == State.TAKEOFF and self.warmup_ticks < 40
+            if not warming_up and not self.px4.in_offboard():
+                self.change_state(State.IDLE, 'PX4 left offboard: pilot, failsafe, or refusal')
                 return
             self.px4.send_heartbeat()
             self.px4.send_position(*self.hold_point)
@@ -111,7 +112,9 @@ class Mission(Node):
             if self.warmup_ticks == 10:
                 self.px4.start_offboard()
                 self.px4.arm()
-            if self.px4.altitude() >= self.altitude - 0.1:
+            if self.warmup_ticks >= 40 and not self.px4.is_armed():
+                self.change_state(State.ABORT, 'PX4 refused to arm; see pxh>')
+            elif self.px4.altitude() >= self.altitude - 0.1:
                 self.change_state(State.SEARCH, 'reached take-off height')
             elif self.seconds_in_state() > self.climb_timeout:
                 self.change_state(State.ABORT, 'climb timed out')
