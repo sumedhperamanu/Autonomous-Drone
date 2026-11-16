@@ -35,6 +35,8 @@ class Mission(Node):
         self.state_start = self.get_clock().now()
         self.warmup_ticks = 0
         self.hold_point = (0.0, 0.0, -self.altitude)
+        self.start_down = 0.0
+        self.hold_yaw = 0.0
         self.create_service(Trigger, 'mission/start', self.on_start)
         self.create_service(Trigger, 'mission/rtl', self.on_rtl)
         self.create_service(Trigger, 'mission/abort', self.on_abort)
@@ -44,6 +46,11 @@ class Mission(Node):
     def seconds_in_state(self):
         """Return how long we have been in the current state."""
         return (self.get_clock().now() - self.state_start).nanoseconds / 1e9
+
+    def height_above_start(self):
+        """Return height above where the mission started, in meters."""
+        _, _, down = self.px4.position()
+        return self.start_down - down
 
     def change_state(self, new_state, reason):
         """Switch state, log why, and run the new state's one-time entry action."""
@@ -71,10 +78,15 @@ class Mission(Node):
         elif self.px4.is_armed():
             response.success = False
             response.message = 'Drone is still armed; land it first'
+        elif not self.px4.has_valid_pose():
+            response.success = False
+            response.message = 'No valid position from PX4 (NaN); wait for the EKF'
         else:
-            north, east, _ = self.px4.position()
-            self.hold_point = (north, east, -self.altitude)
-            self.change_state(State.TAKEOFF, 'start requested')
+            north, east, down = self.px4.position()
+            self.start_down = down
+            self.hold_point = (north, east, down - self.altitude)
+            self.hold_yaw = self.px4.yaw()
+            self.change_state(State.TAKEOFF, f'start requested at {-down:.2f}m (EKF)')
             response.success = True
             response.message = 'Taking off'
         return response
@@ -106,7 +118,7 @@ class Mission(Node):
                 self.change_state(State.IDLE, 'PX4 left offboard: pilot, failsafe, or refusal')
                 return
             self.px4.send_heartbeat()
-            self.px4.send_position(*self.hold_point)
+            self.px4.send_position(*self.hold_point, self.hold_yaw)
         if self.state == State.TAKEOFF:
             self.warmup_ticks += 1
             if self.warmup_ticks == 10:
@@ -114,7 +126,7 @@ class Mission(Node):
                 self.px4.arm()
             if self.warmup_ticks >= 40 and not self.px4.is_armed():
                 self.change_state(State.ABORT, 'PX4 refused to arm; see pxh>')
-            elif self.px4.altitude() >= self.altitude - 0.1:
+            elif self.height_above_start() >= self.altitude - 0.1:
                 self.change_state(State.SEARCH, 'reached take-off height')
             elif self.seconds_in_state() > self.climb_timeout:
                 self.change_state(State.ABORT, 'climb timed out')

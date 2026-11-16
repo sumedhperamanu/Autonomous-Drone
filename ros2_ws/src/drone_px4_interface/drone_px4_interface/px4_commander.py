@@ -1,8 +1,11 @@
 """Helper that talks to PX4: setpoints, commands, status, and odometry."""
 
+import math
+
 from px4_msgs.msg import (
     OffboardControlMode, TrajectorySetpoint, VehicleCommand, VehicleOdometry, VehicleStatus)
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+
 
 PX4_QOS = QoSProfile(
     reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -38,7 +41,7 @@ class Px4Commander:
         node.create_subscription(
             VehicleStatus, names['vehicle_status'], self._on_status, PX4_QOS)
         node.create_subscription(
-                    VehicleOdometry, names['vehicle_odometry'], self._on_odometry, PX4_QOS)
+            VehicleOdometry, names['vehicle_odometry'], self._on_odometry, PX4_QOS)
         self.status = None
         self.odometry = None
         self.odometry_time = None
@@ -70,12 +73,12 @@ class Px4Commander:
             self.status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD)
 
     def position(self):
-        """Return (North, East, Down) in meters from the takeoff point."""
+        """Return (North, East, Down) in meters from the EKF origin, not the take-off point."""
         north, east, down = self.odometry.position
         return float(north), float(east), float(down)
 
     def altitude(self):
-        """Return height above the takeoff point in meters (0 if unknown)."""
+        """Return height above the EKF origin (z = 0) in meters; 0 if unknown."""
         if self.odometry is None:
             return 0.0
         return -float(self.odometry.position[2])
@@ -85,6 +88,18 @@ class Px4Commander:
         if self.odometry_time is None:
             return 1e9
         return (self.node.get_clock().now() - self.odometry_time).nanoseconds / 1e9
+
+    def yaw(self):
+        """Return heading in radians: 0 is north, positive turns clockwise from above."""
+        w, x, y, z = self.odometry.q
+        return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+
+    def has_valid_pose(self):
+        """Return True is position and orientation are real numbers, not NaN."""
+        if self.odometry is None:
+            return False
+        values = list(self.odometry.position) + list(self.odometry.q)
+        return all(math.isfinite(float(v)) for v in values)
 
     # ----- Sending to PX4 -----
 
@@ -134,5 +149,11 @@ class Px4Commander:
         self.send_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
 
     def return_home(self):
-        """Fly back to the takeoff point and land."""
+        """
+        Ask PX4 to return to the takeoff point and land.
+
+        PX4's Return mode needs a global position. On the GPS-denied build, PX4 refuses it;
+        the heartbeat has already stopped, so offboard-lost fires and the drone lands where
+        it is (params/README.md: Return = Land without GPS). Only flies home if a GPS is fitted.
+        """
         self.send_command(VehicleCommand.VEHICLE_CMD_NAV_RETURN_TO_LAUNCH)
