@@ -1,8 +1,8 @@
-"""Black-and-white renders of the detailed 5" model, in the style of a CAD studio render.
+"""Black-and-white renders of the detailed 7" model, in the style of a CAD studio render.
 
-Writes drone5_render.png (grey shaded with black edges) and drone5_lineart.png (black lines on
+Writes drone_render.png (grey shaded with black edges) and drone_lineart.png (black lines on
 white). Both draw the sharp edges of the CAD model plus silhouettes, so curved parts get clean outlines.
-Run from this folder after model5.py works: python3 render5.py
+Run from this folder after model.py works: python3 render.py
 Needs VTK (installed with cadquery) and Pillow.
 """
 import math
@@ -11,7 +11,7 @@ import sys
 import vtk
 from PIL import Image, ImageDraw, ImageFont
 
-import model5 as m5
+import model as m5
 import skeleton as sk
 
 W, H = 3600, 2400
@@ -80,9 +80,9 @@ def render(path, lineart):
 
     cam = ren.GetActiveCamera()
     d = [v / math.sqrt(sum(c * c for c in VIEW)) for v in VIEW]
-    focus = (4.0, 0.0, -24.0)
+    focus = (0.0, 0.0, 6.0)
     cam.SetFocalPoint(*focus)
-    cam.SetPosition(*[focus[i] + 1500 * d[i] for i in range(3)])
+    cam.SetPosition(*[focus[i] + 2000 * d[i] for i in range(3)])
     cam.SetViewUp(0, 0, 1)
     cam.SetViewAngle(17)
 
@@ -154,14 +154,14 @@ def frame(path, lineart):
         bold = small = ImageFont.load_default()
     ink = (20, 20, 22)
     draw.rectangle((24, 24, w - 25, h - 25), outline=ink, width=3)
-    bw, bh = 1180, 190
+    bw, bh = 1400, 190
     x0, y0 = w - 25 - bw, h - 25 - bh
     draw.rectangle((x0, y0, w - 25, h - 25), outline=ink, width=3)
     draw.line((x0, y0 + 74, w - 25, y0 + 74), fill=ink, width=2)
-    draw.text((x0 + 24, y0 + 14), '5" PERCEPTION QUAD  ·  DETAILED ASSEMBLY', font=bold, fill=ink)
-    rows = [f'MASS {m5.sk.mass_props(sk.build_parts())[0]:.0f} g   SPAN 226 mm   PROPS 5.1 x 3.5 x 3',
-            'OAK-D LITE  ·  STL-27L  ·  MTF-01P  ·  RASPBERRY PI 5',
-            'cad/model5.py  ·  UNITS mm  ·  REV 2026-11-14' + ('  ·  LINE ART' if lineart else '')]
+    draw.text((x0 + 24, y0 + 14), '7" OBSTACLE-AVOIDANCE QUAD  ·  DETAILED ASSEMBLY', font=bold, fill=ink)
+    rows = [f'MASS {m5.sk.mass_props(sk.build_parts())[0]:.0f} g (EST.)   SPAN 320 mm   PROPS 7 x 3.5 x 2',
+            'OAK-D LITE  ·  2 x IMX219-200  ·  D500  ·  MTF-01P  ·  JETSON',
+            'cad/model.py  ·  UNITS mm  ·  REV 2026-11-16' + ('  ·  LINE ART' if lineart else '')]
     for i, r in enumerate(rows):
         draw.text((x0 + 24, y0 + 88 + i * 32), r, font=small, fill=ink)
     img.save(path, optimize=True)
@@ -170,6 +170,6 @@ def frame(path, lineart):
 if __name__ == '__main__':
     which = sys.argv[1:] or ['render', 'lineart']
     if 'render' in which:
-        render('drone5_render.png', lineart=False)
+        render('drone_render.png', lineart=False)
     if 'lineart' in which:
-        render('drone5_lineart.png', lineart=True)
+        render('drone_lineart.png', lineart=True)
