@@ -11,11 +11,11 @@ for d in "${1:-}" "${PX4_DIR:-}" "$HOME/PX4-Autopilot" /opt/PX4-Autopilot; do
 done
 [ -n "$PX4" ] || { echo "Couldn't find PX4. Give the path: bash sim/perception/install.sh /path/to/PX4-Autopilot"; exit 1; }
 
-# The perception model is built on P1's fiveinch model
+# The perception model is built on P1's seveninch model
 bash "$HERE/../install.sh" "$PX4" > /dev/null
 
 AIRFRAMES=$PX4/ROMFS/px4fmu_common/init.d-posix/airframes
-name=22061_gz_fiveinch_perception
+name=22060_gz_seveninch_perception
 
 cp -r "$HERE/models/"* "$PX4/Tools/simulation/gz/models/"
 cp "$HERE/worlds/"*.sdf "$PX4/Tools/simulation/gz/worlds/"
@@ -24,5 +24,5 @@ sed -i 's/\r$//' "$AIRFRAMES/$name"
 grep -q "$name" "$AIRFRAMES/CMakeLists.txt" || sed -i "/4001_gz_x500/i\\	$name" "$AIRFRAMES/CMakeLists.txt"
 
 echo "Installed into $PX4"
-echo "Now run: cd $PX4 && make px4_sitl gz_fiveinch_perception"
-echo "Moving-obstacle world: cd $PX4 && PX4_GZ_WORLD=dodge make px4_sitl gz_fiveinch_perception"
+echo "Now run: cd $PX4 && make px4_sitl gz_seveninch_perception"
+echo "Moving-obstacle world: cd $PX4 && PX4_GZ_WORLD=dodge make px4_sitl gz_seveninch_perception"
