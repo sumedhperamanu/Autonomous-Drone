@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7-Inch Obstacle-Avoidance Quad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: three columns inside a drawing-sheet border: part index and controls, the model, part detail and title block. */
+  --paper: #e9e7e2;
+  --panel: #f4f2ee;
+  --ink: #17191c;
+  --muted: #5c6066;
+  --line: #b3afa6;
+  --accent: #dd5519;
+  --oak: #2b64cc;
+  --lidar: #cc3829;
+  --flow: #b97d08;
+  --range: #7046b8;
+  --side: #12807a;
+  --display: 'Archivo', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --body: 'IBM Plex Sans', 'Segoe UI', Helvetica, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 14px/1.45 var(--body); overflow: hidden; }
+
+.sheet { position: fixed; inset: 10px; border: 1px solid var(--ink); pointer-events: none; z-index: 0; }
+.sheet::after { content: ''; position: absolute; inset: 14px; border: 1px solid var(--line); }
+.zones { position: absolute; display: flex; font: 500 9px/1 var(--mono); color: var(--muted); }
+.zones.top, .zones.bottom { left: 14px; right: 14px; height: 14px; }
+.zones.top { top: 0; }
+.zones.bottom { bottom: 0; }
+.zones.left, .zones.right { top: 14px; bottom: 14px; width: 14px; flex-direction: column; }
+.zones.left { left: 0; }
+.zones.right { right: 0; }
+.zones span { flex: 1; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--line); }
+.zones.left span, .zones.right span { border-left: 0; border-top: 1px solid var(--line); }
+.zones span:first-child { border: 0; }
+
+.app { position: relative; z-index: 1; height: 100%; padding: 25px; display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(290px, 340px); }
+.col { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 22px; padding: 16px 18px; scrollbar-width: thin; }
+.center { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+#stage { position: relative; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+
+.eyebrow { font: 500 10.5px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.eyebrow b { color: var(--accent); font-weight: 500; }
+h1 { font-family: var(--display); font-stretch: 116%; font-weight: 780; font-size: clamp(26px, 2.05vw, 36px); line-height: 0.98; letter-spacing: -0.012em; margin: 0 0 12px; text-wrap: balance; }
+h1 em { display: block; font-style: normal; font-stretch: 72%; font-weight: 640; color: var(--accent); margin-top: 4px; }
+.thesis { margin: 0; color: #34383d; font-size: 13.5px; }
+
+.index-title { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 0 8px; border-bottom: 1px solid var(--ink); display: flex; justify-content: space-between; }
+nav ol { list-style: none; margin: 0; padding: 0; }
+nav li { border-bottom: 1px solid var(--line); }
+nav button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 4px; cursor: pointer; }
+nav button .n { font: 500 11px/1 var(--mono); color: var(--muted); }
+nav button .t { font-weight: 600; font-size: 13.5px; }
+nav button .m { font: 400 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+nav button:hover, nav button.hover { background: rgba(23, 25, 28, 0.06); }
+nav button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+nav button[aria-pressed="true"] .n, nav button[aria-pressed="true"] .m { color: #c9c6bf; }
+nav button:focus-visible, .ctl button:focus-visible, .chip:focus-visible, #close:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 10px 14px 12px; border-top: 1px solid var(--line); }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row .lbl { font: 500 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.ctl button, .chip { all: unset; cursor: pointer; font: 500 11.5px/1 var(--mono); padding: 7px 9px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); }
+.ctl button:hover, .chip:hover { background: #fff; }
+.ctl button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip { display: inline-flex; gap: 7px; align-items: center; }
+.chip i { width: 9px; height: 9px; border: 1.5px solid currentColor; display: inline-block; }
+.chip[aria-pressed="true"] i { background: currentColor; }
+.chip.oak { color: var(--oak); border-color: var(--oak); }
+.chip.lidar { color: var(--lidar); border-color: var(--lidar); }
+.chip.flow { color: var(--flow); border-color: var(--flow); }
+.chip.side { color: var(--side); border-color: var(--side); }
+.explode { display: flex; gap: 8px; align-items: center; width: 190px; }
+.explode span { font: 500 10.5px/1 var(--mono); color: var(--muted); }
+input[type=range] { flex: 1; min-width: 60px; accent-color: var(--accent); }
+
+#detail { background: var(--panel); border: 1px solid var(--ink); padding: 16px 18px 18px; }
+#detail .kicker { font: 500 10px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#detail h2 { font-family: var(--display); font-stretch: 105%; font-weight: 720; font-size: 23px; line-height: 1.08; margin: 0 0 6px; text-wrap: balance; }
+#detail .role { margin: 0 0 12px; color: #34383d; }
+#detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); margin: 0 0 12px; border-top: 1px solid var(--line); }
+#detail dt, #detail dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+#detail dt { font: 500 10px/1.7 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-right: 12px; }
+#detail dd { font-variant-numeric: tabular-nums; }
+#detail .note { font-size: 12.5px; color: var(--muted); margin: 0; }
+#close { all: unset; cursor: pointer; flex: none; font: 500 10px/1 var(--mono); color: var(--muted); padding: 4px 6px; border: 1px solid var(--line); }
+#close:hover { color: var(--ink); border-color: var(--ink); }
+
+.titleblock { margin-top: auto; border: 1px solid var(--ink); background: var(--panel); display: grid; grid-template-columns: 74px minmax(0, 1fr); font-size: 12px; }
+.titleblock div { padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.titleblock div:nth-child(odd) { font: 500 9.5px/1.9 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-right: 1px solid var(--line); }
+.titleblock div:nth-last-child(-n+2) { border-bottom: 0; }
+.titleblock .big { font-family: var(--display); font-stretch: 112%; font-weight: 720; font-size: 15px; }
+
+.pin { position: absolute; z-index: 2; left: 0; top: 0; display: flex; align-items: center; cursor: pointer; white-space: nowrap; }
+.pin b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 500 10.5px/1 var(--mono); background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
+.pin span { position: absolute; left: 30px; font: 600 12px/1 var(--body); background: var(--ink); color: var(--paper); padding: 4px 7px; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.pin:hover span, .pin.on span { opacity: 1; }
+.pin.on b, .pin:hover b { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pin.dim { opacity: 0.25; }
+.vlabel { position: absolute; z-index: 1; left: 0; top: 0; font: 500 10.5px/1.35 var(--mono); padding: 4px 7px; background: var(--panel); border-left: 3px solid; pointer-events: none; white-space: nowrap; }
+#hint { position: absolute; z-index: 1; left: 0; right: 0; bottom: 10px; text-align: center; font: 400 10.5px/1.3 var(--mono); color: var(--muted); pointer-events: none; padding: 0 12px; }
+
+#loading { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: var(--paper); font: 500 12px/1.6 var(--mono); color: var(--muted); transition: opacity .5s; }
+#loading .bar { width: 220px; height: 2px; background: var(--line); margin-top: 8px; }
+#loading .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+@media (max-width: 1100px) {
+  html, body { height: auto; }
+  body { overflow: auto; }
+  .sheet { display: none; }
+  .app { display: flex; flex-direction: column; height: auto; padding: 16px; gap: 18px; }
+  .col, .center { display: contents; }
+  header { order: 1; }
+  #stage { order: 2; height: 66vh; min-height: 380px; border: 1px solid var(--line); }
+  .controls { order: 3; padding: 0; border: 0; }
+  #detail { order: 4; }
+  nav { order: 5; }
+  .titleblock { order: 6; margin: 0; }
+  .row .lbl { min-width: 82px; }
+  #hint { display: none; }
+  .explode { flex: 1; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .pin span { transition: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="sheet" aria-hidden="true">
+  <div class="zones top"></div><div class="zones bottom"></div><div class="zones left"></div><div class="zones right"></div>
+</div>
+<div class="app">
+  <div class="col left">
+    <header>
+      <p class="eyebrow">Autonomous Drone · <b>P3 Perception &amp; Sensing</b></p>
+      <h1>7-inch obstacle-avoidance quad <em>detailed assembly</em></h1>
+      <p class="thesis">It flies from point A to point B without GPS and gets out of the way of moving obstacles. It uses stereo depth ahead, two fisheye cameras for the sides and behind, a 360° lidar plane above the props and optical flow below, all processed on a Jetson on board.</p>
+    </header>
+    <nav aria-label="Parts">
+      <div class="index-title"><span>Part index</span><span>Mass in budget</span></div>
+      <ol id="index"></ol>
+    </nav>
+  </div>
+  <section class="center">
+    <main id="stage" aria-label="3D model of the drone. Drag to rotate, scroll to zoom, right-drag to pan.">
+      <div id="hint">Drag to rotate · scroll to zoom · right-drag to pan · click a part to isolate it · Esc to clear</div>
+    </main>
+      <div class="controls">
+        <div class="row">
+          <span class="lbl">Assembly</span>
+          <div class="explode"><span>Built</span><input type="range" id="explode" min="0" max="1" step="0.01" value="0" aria-label="Explode the assembly"><span>Apart</span></div>
+          <span class="ctl"><button id="explodeBtn" aria-pressed="false">Explode</button></span>
+        </div>
+        <div class="row">
+          <span class="lbl">Coverage</span>
+          <button class="chip oak" data-view="oak" aria-pressed="true"><i></i>OAK-D view</button>
+          <button class="chip side" data-view="side" aria-pressed="false"><i></i>Side cameras</button>
+          <button class="chip lidar" data-view="lidar" aria-pressed="true"><i></i>Lidar plane</button>
+          <button class="chip flow" data-view="flow" aria-pressed="false"><i></i>Flow + range</button>
+        </div>
+        <div class="row ctl">
+          <span class="lbl">Camera</span>
+          <button data-cam="iso">3/4</button><button data-cam="front">Front</button><button data-cam="side">Side</button><button data-cam="top">Top</button><button data-cam="below">Below</button><button id="spin" aria-pressed="false">Turntable</button>
+        </div>
+      </div>
+  </section>
+  <div class="col right">
+    <aside id="detail" aria-live="polite"></aside>
+    <div class="titleblock" id="titleblock"></div>
+  </div>
+</div>
+<div id="loading"><div>Loading the assembly<div class="bar"><i id="bar"></i></div></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const META = __META__;
+const GLB = '__GLB__';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const GROUPS = [
+  { id: 'oakd', name: 'OAK-D Lite', short: 'Forward stereo depth', anchor: [86, 0, -36],
+    role: 'Forward depth, the left mono image for SLAM, and an IMU, all from one USB 3 cable.',
+    rows: [['View', '73° × 58°, tilted up 8°'], ['Depth', '0.2 to 12 m, about 0.06 m error at 3 m'], ['Rate', '30 Hz depth and mono, IMU at 250 Hz'],
+           ['Baseline', '7.5 cm stereo pair, depth computed on the camera'], ['Connects', 'Jetson USB 3'], ['Mount', "Front face 84 mm ahead of centre, 50 mm below the props (P1's position)"]],
+    note: 'It sees about 3% of each front prop disc along the top edge of its view; mask that in software. The printed cradle tilts it up 8°.' },
+  { id: 'side', name: 'Side cameras', short: '2 × IMX219-200, 200° lenses', anchor: [0, -32, 104],
+    role: 'Spot objects coming from the sides and behind, by how fast they grow in the image.',
+    rows: [['View', 'About 160° × 120° each (estimate; measure the lens)'], ['Mount', '100 mm above the props on the mast, 15° rearward, tilted up 25°'],
+           ['Resolution', '1640 × 1232 at 30 fps (820 × 616 in the sim)'], ['Small objects', 'A 7 cm ball at about 3.5 m'], ['Connects', "Jetson's two CSI camera ports"]],
+    note: 'In CAD each one sees about 31% of a rear prop disc and a corner of the lidar. Tilting them up about 35° clears the props, at the cost of less view below the horizon.' },
+  { id: 'lidar', name: 'D500 lidar', short: '360° scan plane', anchor: [0, 0, 152],
+    role: 'Sees obstacles all the way round in one plane, works in the dark, and feeds phase 1 SLAM.',
+    rows: [['Scan', '360°, about 500 points a turn, 0.72° apart'], ['Range', '0.03 to 12 m at 10 Hz'], ['Plane', '138 mm above the props, on top of the mast'],
+           ['Small objects', 'A 7 cm ball shows at about 1.9 m'], ['Connects', 'Jetson USB, through its CP2102 adapter'], ['PX4', 'Also read as obstacle_distance']],
+    note: 'The mast stands on a printed bridge over the Jetson, so its fan stays clear. The STL-27L would see a 7 cm ball at about 8 m, for about $174 more.' },
+  { id: 'mtf', name: 'MTF-01P', short: 'Downward flow + range', anchor: [-50, -42, -44],
+    role: 'Optical flow and a time-of-flight rangefinder. It holds position and height when SLAM loses tracking.',
+    rows: [['Flow', '42° view, works above 60 lux'], ['Range', '0.02 to 12 m, 100 Hz'], ['Height', '90 mm off the ground when landed'],
+           ['Connects', 'Flight controller TELEM2, MAVLink at 115,200 baud'], ['Mass', 'About 8 g']],
+    note: "It sits in a printed holder under the rear-right arm, 50 mm aft and 42 mm right, where its view clears the battery. P1's 22 mm below the props would be inside the arm." },
+  { id: 'jetson', name: 'Jetson Orin Nano Super', short: 'Companion computer', anchor: [0, -44, 42],
+    role: 'Runs ROS 2 Jazzy, RTAB-Map SLAM, obstacle tracking and the planner, and talks to PX4 over XRCE-DDS.',
+    rows: [['Kit', 'Developer kit, 8 GB, flown on its own carrier (176 g)'], ['Processor', '6 Cortex-A78AE cores and a 1024-core GPU'], ['Storage', '500 GB NVMe SSD'],
+           ['Power', '12 V from the Matek BEC12S-PRO'], ['Mount', 'Deck on rubber dampers, fan clear under the mast bridge'], ['Telemetry', 'Wi-Fi on 5 GHz to QGC; no SiK radio']],
+    note: 'Keep the Wi-Fi antennas off the carbon and at least 5 cm from the ELRS antenna. Measure the real CPU load on Day 6 with bench/pi5.' },
+  { id: 'stack', name: 'Flight stack', short: 'FC, ESC, receiver, BEC', anchor: [-30, -21, -6],
+    role: 'Runs PX4 v1.17 and drives the motors.',
+    rows: [['Flight controller', 'MicoAir743 V2, on rubber grommets'], ['ESC', 'MicoAir 55A AM32 4-in-1'], ['Receiver', 'RadioMaster RP1 ExpressLRS, on the rear-right arm'],
+           ['Jetson power', 'Matek BEC12S-PRO at 12 V, Jetson only']],
+    note: 'Check the BEC output and the barrel plug polarity with a multimeter before connecting the Jetson; it has no reverse-polarity protection.' },
+  { id: 'battery', name: '4S 5200 mAh battery', short: 'Powerhobby, underneath', anchor: [24, -25, -60],
+    role: 'Powers everything. It hangs under the frame on a printed tray, which keeps the centre of mass low.',
+    rows: [['Pack', 'Powerhobby 4S 5200 mAh 50C'], ['Size', '138 × 47 × 48 mm, listed at 473 or 567 g'], ['Mount', 'Two straps through the printed tray'], ['Lead', 'XT60 at the back, up to the ESC']],
+    note: "P1's eCalc at 1,310 g gave 4.1 thrust-to-weight and 14.6 minutes of hover. Weigh the pack and rerun it at the built mass." },
+  { id: 'motors', name: 'Motors', short: '2807, about 1700 KV', anchor: [113, 113, -12],
+    role: 'Four 2807 motors on 4S.',
+    rows: [['Size', '2807, about 1700 KV'], ['Spin', 'PX4 quad X: front right and rear left CCW'], ['Mount', '19 × 19 mm pattern, M3 (estimate)']],
+    note: 'The exact motor model is still to be picked.' },
+  { id: 'props', name: 'Props', short: '7 × 3.5 two-blade', anchor: [-165, -70, 2],
+    role: '7-inch two-blade props, balanced before the first flight.',
+    rows: [['Size', '7 in diameter, 3.5 in pitch, 2 blades'], ['Clearance', 'Below the lidar plane'], ['In view', 'Front props at the top edge of the OAK-D view, rear props low in the side views']],
+    note: 'They\'re modelled with real twist and taper, which is how the view checks know exactly what each camera sees.' },
+  { id: 'frame', name: 'Frame', short: 'Source One V5 7"', anchor: [-80, 80, -22],
+    role: 'TBS Source One V5: carbon arms between two plates, with a top plate on standoffs.',
+    rows: [['Size', '320 mm motor to motor'], ['Price', 'About $53 CAD'], ['Plates', '130 × 50 mm, 2 mm carbon (estimate)'], ['Arms', '6 mm carbon (estimate)']],
+    note: 'Plate and arm shapes are estimates until we check them against the frame\'s CAD files.' },
+  { id: 'legs', name: 'Legs', short: 'Printed, rubber feet', anchor: [85, -85, -118],
+    role: 'Four printed legs bolted under the arms. They keep the battery, the camera and the flow sensor off the ground.',
+    rows: [['Height', '104 mm below the arms'], ['Clearance', 'Flow sensor 90 mm up (80 mm minimum), battery 51 mm'], ['Placement', 'On the arm lines, outside every sensor view']],
+    note: 'Print them in PETG or carbon-filled nylon, as P1\'s log suggests for rigid parts.' },
+];
+
+const MAT = {
+  carbon: { color: 0x141518, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.07, carbon: true },
+  titanium: { color: 0x8e9197, metalness: 1, roughness: 0.32 },
+  alu_dark: { color: 0x2b2d31, metalness: 0.75, roughness: 0.42 },
+  bell: { color: 0x1c1e21, metalness: 0.9, roughness: 0.28 },
+  accent: { color: 0xdd5519, metalness: 0.55, roughness: 0.32 },
+  copper: { color: 0xb8713b, metalness: 1, roughness: 0.34 },
+  steel: { color: 0xc8cbd0, metalness: 1, roughness: 0.22 },
+  pcb_black: { color: 0x131416, roughness: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.3 },
+  pcb_green: { color: 0x1c5c39, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 },
+  gold: { color: 0xd6a64b, metalness: 1, roughness: 0.28 },
+  chip: { color: 0x1a1b1d, roughness: 0.62 },
+  plastic_white: { color: 0xeceae4, roughness: 0.6 },
+  plastic_black: { color: 0x1b1c1e, roughness: 0.55 },
+  glass: { color: 0x05070a, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02 },
+  print: { color: 0xdd5519, roughness: 0.78, sheen: 0.4, sheenColor: 0xffb48a, sheenRoughness: 0.8 },
+  battery: { color: 0x1b1c1f, roughness: 0.42, clearcoat: 0.35 },
+  label: { color: 0xb51d18, roughness: 0.48, clearcoat: 0.3 },
+  strap: { color: 0x161616, roughness: 0.95, sheen: 0.6, sheenColor: 0x666666 },
+  wire_red: { color: 0xb3221a, roughness: 0.55 },
+  wire_black: { color: 0x141414, roughness: 0.58 },
+  xt60: { color: 0xf2bf1d, roughness: 0.45 },
+  shrink: { color: 0x214fae, roughness: 0.5, clearcoat: 0.3 },
+  prop: { color: 0x3a4453, roughness: 0.18, clearcoat: 1, transparent: true, opacity: 0.84, side: THREE.DoubleSide },
+  rubber: { color: 0x1c1c1c, roughness: 0.95 },
+  lidar: { color: 0x25272b, metalness: 0.3, roughness: 0.48 },
+  usb3: { color: 0x2050d0, roughness: 0.5 },
+};
+
+// ---------- drawing-sheet zones ----------
+const zone = (sel, labels) => { document.querySelector(sel).innerHTML = labels.map(l => `<span>${l}</span>`).join(''); };
+zone('.zones.top', [1, 2, 3, 4, 5, 6, 7, 8]); zone('.zones.bottom', [1, 2, 3, 4, 5, 6, 7, 8]);
+zone('.zones.left', ['A', 'B', 'C', 'D', 'E', 'F']); zone('.zones.right', ['A', 'B', 'C', 'D', 'E', 'F']);
+
+// ---------- static text ----------
+const fmt = n => n.toLocaleString('en-CA');
+document.getElementById('titleblock').innerHTML = [
+  ['Project', 'Autonomous Drone · P3 Perception'],
+  ['Drawing', '<span class="big">7" Jetson build</span>'],
+  ['Mass', `${fmt(META.mass)} g estimated · requirement 1.2–1.8 kg`],
+  ['Span', `${META.motor_to_motor} mm motor to motor · ${META.prop_in}" props`],
+  ['Sensors', 'OAK-D Lite · 2 × IMX219-200 · D500 · MTF-01P'],
+  ['Checks', `${META.parts} parts, ${META.problems.length === 0 ? 'no clashes' : META.problems.length + ' findings'}; props and the lidar corner show in camera views, masked in software`],
+  ['Units', 'mm · X forward, Y left, Z up'],
+  ['Source', 'cad/model.py · rev 2026-11-16'],
+].map(([k, v]) => `<div>${k}</div><div>${v}</div>`).join('');
+
+const index = document.getElementById('index');
+GROUPS.forEach((g, i) => {
+  g.n = String(i + 1).padStart(2, '0');
+  g.mass = META.groups[g.id];
+  const li = document.createElement('li');
+  li.innerHTML = `<button id="idx-${g.id}" aria-pressed="false"><span class="n">${g.n}</span><span class="t">${g.name}</span><span class="m">${g.mass ? g.mass.toFixed(g.mass < 20 ? 1 : 0) + ' g' : ''}</span></button>`;
+  li.firstChild.addEventListener('click', () => select(selected === g.id ? null : g.id, true));
+  li.firstChild.addEventListener('mouseenter', () => setHover(g.id));
+  li.firstChild.addEventListener('mouseleave', () => setHover(null));
+  index.appendChild(li);
+});
+
+const detail = document.getElementById('detail');
+function showDetail(id) {
+  const g = GROUPS.find(x => x.id === id);
+  if (!g) {
+    detail.innerHTML = `<p class="kicker"><span>Whole drone</span></p>
+      <h2>${fmt(META.mass)} g ready to fly</h2>
+      <p class="role">That's inside P1's 1.2–1.8 kg for this airframe, with the 567 g battery figure. The centre of mass sits ${Math.abs(META.com[0]).toFixed(0)} mm ${META.com[0] >= 0 ? 'ahead of' : 'behind'} centre and ${Math.abs(META.com[2]).toFixed(1)} mm ${META.com[2] >= 0 ? 'above' : 'below'} the props.</p>
+      <dl>
+        <dt>Ahead</dt><dd>OAK-D Lite stereo depth, 73° × 58°</dd>
+        <dt>Sides, behind</dt><dd>2 × IMX219-200, about 160° × 120° each</dd>
+        <dt>All round</dt><dd>D500 lidar plane, ${META.lidar_z} mm above the props</dd>
+        <dt>Below</dt><dd>MTF-01P flow and range, ${META.flow_height} mm off the ground</dd>
+        <dt>Computer</dt><dd>Jetson Orin Nano Super, ROS 2 Jazzy, PX4 v1.17</dd>
+        <dt>Inertia</dt><dd>${META.inertia.map(v => v.toFixed(4)).join(' / ')} kg m² (roll / pitch / yaw)</dd>
+      </dl>
+      <p class="note">Every sensor here has a matching Gazebo sensor in the sim. Frame plate sizes and some masses are estimates until we check them against the parts.</p>`;
+    return;
+  }
+  detail.innerHTML = `<p class="kicker"><span>${g.n} · ${g.short}</span><button id="close">Clear ✕</button></p>
+    <h2>${g.name}</h2><p class="role">${g.role}</p>
+    <dl>${g.rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}${g.mass ? `<dt>In budget</dt><dd>${g.mass} g, mounts included</dd>` : ''}</dl>
+    <p class="note">${g.note}</p>`;
+  document.getElementById('close').addEventListener('click', () => select(null, true));
+}
+showDetail(null);
+
+// ---------- renderer and scene ----------
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8b2a6, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(260, -320, 700);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -420, right: 420, top: 420, bottom: -420, near: 100, far: 2200 });
+key.shadow.bias = -0.0004;
+key.shadow.normalBias = 0.6;
+scene.add(key);
+
+const camera = new THREE.PerspectiveCamera(30, 1, 2, 12000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 160;
+controls.maxDistance = 2600;
+controls.autoRotateSpeed = 0.7;
+const HOME = new THREE.Vector3(0, 0, 4);
+controls.target.copy(HOME);
+
+const ground = META.ground;
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.2 }));
+shadowPlane.position.z = ground - 0.05;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+const polar = new THREE.PolarGridHelper(540, 16, 6, 96, 0x9d998f, 0xbdb9b0);
+polar.rotation.x = Math.PI / 2;
+polar.position.z = ground;
+polar.material.transparent = true; polar.material.opacity = 0.55;
+scene.add(polar);
+
+// ---------- carbon weave texture ----------
+function carbonTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const tow = 32;
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+    const over = ((i + j) >> 1) % 2 === 0;
+    const g = over ? x.createLinearGradient(i * tow, 0, i * tow + tow, 0) : x.createLinearGradient(0, j * tow, 0, j * tow + tow);
+    g.addColorStop(0, '#0d0e10'); g.addColorStop(0.5, over ? '#3a3c40' : '#2a2c30'); g.addColorStop(1, '#0d0e10');
+    x.fillStyle = g; x.fillRect(i * tow, j * tow, tow, tow);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const weave = carbonTexture();
+
+function planarUV(geo) {
+  const p = geo.attributes.position, n = geo.attributes.normal, uv = new Float32Array(p.count * 2), s = 1 / 22;
+  for (let i = 0; i < p.count; i++) {
+    const flat = Math.abs(n.getZ(i)) > 0.6;
+    uv[2 * i] = (flat ? p.getX(i) : p.getX(i) + p.getY(i)) * s;
+    uv[2 * i + 1] = (flat ? p.getY(i) : p.getZ(i)) * s;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+
+function makeMaterial(key) {
+  const spec = { ...(MAT[key] || MAT.plastic_black) };
+  const carbon = spec.carbon; delete spec.carbon;
+  const m = new THREE.MeshPhysicalMaterial(spec);
+  if (carbon) { m.map = weave; m.color.set(0xffffff); m.roughness = 0.38; }
+  m.userData.base = { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite };
+  return m;
+}
+
+// ---------- the model ----------
+const nodes = [];          // { mesh, group, explode: Vector3 }
+const modelRoot = new THREE.Group();
+scene.add(modelRoot);
+
+function decode(b64) {
+  const s = atob(b64), out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out.buffer;
+}
+
+function build(gltf) {
+  const root = gltf.scene.getObjectByName('drone5') || gltf.scene.children[0];
+  root.quaternion.identity();
+  root.updateMatrixWorld(true);
+  for (const child of [...root.children]) {
+    const name = child.name;
+    const info = META.nodes[name];
+    if (!info) continue;
+    const geos = [];
+    child.traverse(o => {
+      if (!o.isMesh) return;
+      const g = o.geometry.clone();
+      g.applyMatrix4(o.matrixWorld);
+      for (const a of Object.keys(g.attributes)) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a);
+      if (!g.index) g.setIndex([...Array(g.attributes.position.count).keys()]);
+      geos.push(g);
+    });
+    if (!geos.length) continue;
+    const geo = geos.length > 1 ? mergeGeometries(geos) : geos[0];
+    if (info.mat === 'carbon') planarUV(geo);
+    geo.computeBoundingBox();
+    const mesh = new THREE.Mesh(geo, makeMaterial(info.mat));
+    mesh.castShadow = true; mesh.receiveShadow = info.mat !== 'prop';
+    mesh.userData = { group: info.group, name };
+    modelRoot.add(mesh);
+    nodes.push({ mesh, group: info.group, explode: new THREE.Vector3(...info.explode) });
+  }
+}
+
+// ---------- sensor coverage ----------
+const coverage = { oak: new THREE.Group(), side: new THREE.Group(), lidar: new THREE.Group(), flow: new THREE.Group() };
+Object.values(coverage).forEach(g => scene.add(g));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function fadeMaterial() {
+  return new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+}
+function rgba(color, alpha) { const c = new THREE.Color(color); return [c.r, c.g, c.b, alpha]; }
+
+function buildCoverage() {
+  const V = META.views, D = Math.PI / 180;
+  { // OAK-D frustum, drawn 0.52 m long
+    const o = V.oak, A = new THREE.Vector3(...o.apex), L = 520;
+    const th = Math.tan(o.hfov / 2 * D), tv = Math.tan(o.vfov / 2 * D), ct = Math.cos(o.tilt * D), st = Math.sin(o.tilt * D);
+    const far = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
+      const x = 1, y = a * th, z = b * tv;
+      return new THREE.Vector3(x * ct - z * st, y, x * st + z * ct).multiplyScalar(L).add(A);
+    });
+    const pos = [], col = [], c0 = rgba(css('--oak'), 0.2), c1 = rgba(css('--oak'), 0.015);
+    for (let i = 0; i < 4; i++) { pos.push(...A.toArray(), ...far[i].toArray(), ...far[(i + 1) % 4].toArray()); col.push(...c0, ...c1, ...c1); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    coverage.oak.add(new THREE.Mesh(g, fadeMaterial()));
+    const lp = []; far.forEach((f, i) => lp.push(A, f, f, far[(i + 1) % 4]));
+    coverage.oak.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lp),
+      new THREE.LineBasicMaterial({ color: css('--oak'), transparent: true, opacity: 0.55 })));
+    coverage.oak.userData.label = { at: far[2].clone().lerp(far[3], 0.5), color: css('--oak'), text: 'OAK-D Lite · 73° × 58°, tilted up 8°<br>drawn to 0.5 m · depth to 12 m' };
+  }
+  { // side cameras: each view drawn as a patch of a 0.22 m sphere, since 160° is too wide for a flat frustum
+    const R = 220, NA = 28, NE = 18;
+    V.side.forEach((c, n) => {
+      const A = new THREE.Vector3(...c.apex), ct = Math.cos(c.tilt * D), st = Math.sin(c.tilt * D);
+      const cy = Math.cos(c.yaw * D), sy = Math.sin(c.yaw * D);
+      const dir = (az, el) => {
+        let x = Math.cos(el) * Math.cos(az), y = Math.cos(el) * Math.sin(az), z = Math.sin(el);
+        [x, z] = [x * ct - z * st, x * st + z * ct];
+        return new THREE.Vector3(x * cy - y * sy, x * sy + y * cy, z);
+      };
+      const pos = [], col = [], idx = [];
+      for (let i = 0; i <= NA; i++) for (let j = 0; j <= NE; j++) {
+        const u = i / NA * 2 - 1, v = j / NE * 2 - 1;
+        pos.push(...dir(u * c.hfov / 2 * D, v * c.vfov / 2 * D).multiplyScalar(R).add(A).toArray());
+        col.push(...rgba(css('--side'), 0.16 * (1 - 0.7 * Math.max(Math.abs(u), Math.abs(v)))));
+      }
+      for (let i = 0; i < NA; i++) for (let j = 0; j < NE; j++) {
+        const a = i * (NE + 1) + j, b = a + NE + 1;
+        idx.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+      g.setIndex(idx);
+      coverage.side.add(new THREE.Mesh(g, fadeMaterial()));
+      const rim = [];
+      for (let k = 0; k <= 64; k++) {
+        const t = k / 64 * 4, s2 = t % 1, e = Math.floor(t) % 4;
+        const [u, v] = [[-1 + 2 * s2, -1], [1, -1 + 2 * s2], [1 - 2 * s2, 1], [-1, 1 - 2 * s2]][e];
+        rim.push(dir(u * c.hfov / 2 * D, v * c.vfov / 2 * D).multiplyScalar(R).add(A));
+      }
+      coverage.side.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),
+        new THREE.LineBasicMaterial({ color: css('--side'), transparent: true, opacity: 0.5 })));
+      if (n === 1) coverage.side.userData.label = { at: dir(0, 0.75).multiplyScalar(R).add(A), color: css('--side'),
+        text: 'Side cameras · about 160° × 120° each<br>15° rearward, tilted up 25° · drawn to 0.22 m' };
+    });
+  }
+  { // lidar plane, drawn to 0.42 m
+    const l = V.lidar, R = 460, ring = new THREE.RingGeometry(l.inner, R, 160, 6);
+    const p = ring.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) { const r = Math.hypot(p.getX(i), p.getY(i)); col.push(...rgba(css('--lidar'), 0.11 * (1 - (r - l.inner) / (R - l.inner)) + 0.01)); }
+    ring.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    const plane = new THREE.Mesh(ring, fadeMaterial());
+    const sweep = new THREE.RingGeometry(l.inner, R, 48, 1, 0, 0.9);
+    const sp = sweep.attributes.position, sc = [];
+    for (let i = 0; i < sp.count; i++) { const a = Math.atan2(sp.getY(i), sp.getX(i)); sc.push(...rgba(css('--lidar'), 0.2 * Math.max(0, a / 0.9))); }
+    sweep.setAttribute('color', new THREE.Float32BufferAttribute(sc, 4));
+    const sweepMesh = new THREE.Mesh(sweep, fadeMaterial());
+    const edge = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(
+      [...Array(129).keys()].map(k => new THREE.Vector3(Math.cos(k / 128 * 2 * Math.PI) * R, Math.sin(k / 128 * 2 * Math.PI) * R, 0))),
+      new THREE.LineDashedMaterial({ color: css('--lidar'), dashSize: 8, gapSize: 6, transparent: true, opacity: 0.6 }));
+    edge.computeLineDistances();
+    const g = coverage.lidar; g.position.set(...l.center);
+    g.add(plane, sweepMesh, edge);
+    g.userData.sweep = sweepMesh;
+    g.userData.label = { at: new THREE.Vector3(l.center[0] - R * 0.72, -R * 0.72, l.center[2]), color: css('--lidar'), text: `Lidar plane · 360°, ${META.lidar_z} mm above the props<br>drawn to 0.46 m · range 12 m` };
+  }
+  { // flow cone and range beam, to the ground
+    const f = V.flow, h = f.apex[2] - ground;
+    const cone = (fov, color, a0, a1) => {
+      const geo = new THREE.ConeGeometry(Math.tan(fov / 2 * D) * h, h, 64, 4, true);
+      geo.rotateX(Math.PI / 2);
+      const p = geo.attributes.position, col = [];
+      for (let i = 0; i < p.count; i++) { const t = (h / 2 - p.getZ(i)) / h; col.push(...rgba(color, a0 + (a1 - a0) * t)); }
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+      const m = new THREE.Mesh(geo, fadeMaterial());
+      m.position.set(f.apex[0], f.apex[1], f.apex[2] - h / 2);
+      return m;
+    };
+    coverage.flow.add(cone(f.fov, css('--flow'), 0.32, 0.1), cone(f.range_fov * 2, css('--range'), 0.7, 0.45));
+    const foot = new THREE.Mesh(new THREE.CircleGeometry(Math.tan(f.fov / 2 * D) * h, 64),
+      new THREE.MeshBasicMaterial({ color: css('--flow'), transparent: true, opacity: 0.16, depthWrite: false }));
+    foot.position.set(f.apex[0], f.apex[1], ground + 0.2);
+    coverage.flow.add(foot);
+    coverage.flow.userData.label = { at: new THREE.Vector3(f.apex[0] - 70, f.apex[1], ground + 18), color: css('--flow'), text: `Flow 42° + range beam<br>${META.flow_height} mm off the ground` };
+  }
+  for (const [k, g] of Object.entries(coverage)) {
+    const el = document.createElement('div');
+    el.className = 'vlabel'; el.style.borderColor = g.userData.label.color; el.innerHTML = g.userData.label.text;
+    stage.appendChild(el); g.userData.el = el;
+    const on = document.querySelector(`.chip[data-view="${k}"]`).getAttribute('aria-pressed') === 'true';
+    g.visible = on;
+  }
+}
+document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+  const on = b.getAttribute('aria-pressed') !== 'true';
+  b.setAttribute('aria-pressed', on); coverage[b.dataset.view].visible = on;
+}));
+
+// ---------- pins ----------
+const pins = GROUPS.map(g => {
+  const el = document.createElement('div');
+  el.className = 'pin'; el.innerHTML = `<b>${g.n}</b><span>${g.name}</span>`;
+  el.addEventListener('click', e => { e.stopPropagation(); select(selected === g.id ? null : g.id, true); });
+  el.addEventListener('mouseenter', () => setHover(g.id));
+  el.addEventListener('mouseleave', () => setHover(null));
+  stage.appendChild(el);
+  return { g, el, at: new THREE.Vector3(...g.anchor) };
+});
+
+// ---------- explode ----------
+let explodeNow = 0, explodeGoal = 0;
+const slider = document.getElementById('explode'), explodeBtn = document.getElementById('explodeBtn');
+slider.addEventListener('input', () => { explodeGoal = explodeNow = +slider.value; syncExplodeBtn(); });
+explodeBtn.addEventListener('click', () => { explodeGoal = explodeGoal > 0.5 ? 0 : 1; syncExplodeBtn(); });
+function syncExplodeBtn() { const on = explodeGoal > 0.5; explodeBtn.setAttribute('aria-pressed', on); explodeBtn.textContent = on ? 'Assemble' : 'Explode'; }
+function groupOffset(id) {
+  const n = nodes.find(x => x.group === id);
+  return n ? n.explode.clone().multiplyScalar(explodeNow) : new THREE.Vector3();
+}
+
+// ---------- selection ----------
+let selected = null, hovered = null;
+function setHover(id) {
+  hovered = id;
+  GROUPS.forEach(g => document.getElementById('idx-' + g.id).classList.toggle('hover', g.id === id));
+  pins.forEach(p => p.el.classList.toggle('on', p.g.id === id || p.g.id === selected));
+  renderer.domElement.style.cursor = id ? 'pointer' : '';
+}
+function select(id, focus) {
+  selected = id;
+  for (const n of nodes) {
+    const m = n.mesh.material, b = m.userData.base, ghost = id && n.group !== id;
+    m.transparent = ghost ? true : b.transparent;
+    m.opacity = ghost ? 0.12 : b.opacity;
+    m.depthWrite = !ghost;
+    n.mesh.castShadow = !ghost;
+    m.needsUpdate = true;
+  }
+  GROUPS.forEach(g => document.getElementById('idx-' + g.id).setAttribute('aria-pressed', g.id === id));
+  pins.forEach(p => { p.el.classList.toggle('on', p.g.id === id); p.el.classList.toggle('dim', !!id && p.g.id !== id); });
+  showDetail(id);
+  if (focus) {
+    if (id) {
+      const box = new THREE.Box3();
+      nodes.filter(n => n.group === id).forEach(n => { n.mesh.updateMatrixWorld(); box.expandByObject(n.mesh); });
+      const c = box.getCenter(new THREE.Vector3()), r = Math.max(70, box.getSize(new THREE.Vector3()).length() * 0.9);
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      fly(c, c.clone().add(dir.multiplyScalar(r / Math.tan(camera.fov / 2 * Math.PI / 180) * 1.15)));
+    } else {
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      fly(HOME, HOME.clone().add(dir.multiplyScalar(homeDistance())));
+    }
+  }
+}
+addEventListener('keydown', e => { if (e.key === 'Escape') select(null, true); });
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+function pick(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(nodes.map(n => n.mesh), false)
+    .find(h => !h.object.material.transparent || h.object.material.opacity > 0.5);
+  return hit ? hit.object.userData.group : null;
+}
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+  const id = pick(e);
+  select(id && id !== selected ? id : null, true);
+});
+let lastMove = 0;
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.buttons || performance.now() - lastMove < 40) return;
+  lastMove = performance.now();
+  const id = pick(e);
+  if (id !== hovered) setHover(id);
+});
+renderer.domElement.addEventListener('pointerleave', () => setHover(null));
+
+// ---------- camera ----------
+const CAMS = { iso: [1.0, -1.3, 0.75], front: [1, 0, 0.06], side: [0, -1, 0.06], top: [0.0001, -0.0001, 1], below: [0.7, -0.9, -0.55] };
+function homeDistance() {
+  // Fit a 240 mm radius around the drone in whichever view angle is tighter.
+  const v = Math.tan(camera.fov / 2 * Math.PI / 180), h = v * SW / SH;
+  return 300 / Math.min(v, h) * (1 + explodeGoal * 0.3);
+}
+let flight = null;
+function fly(target, pos, ms = 750) {
+  if (reduced) { controls.target.copy(target); camera.position.copy(pos); return; }
+  flight = { t0: performance.now(), ms, a: [controls.target.clone(), camera.position.clone()], b: [target.clone(), pos.clone()] };
+}
+document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => {
+  const d = new THREE.Vector3(...CAMS[b.dataset.cam]).normalize();
+  const t = selected ? controls.target.clone() : HOME;
+  const dist = selected ? camera.position.distanceTo(controls.target) : homeDistance();
+  fly(t, t.clone().add(d.multiplyScalar(dist)));
+}));
+const spin = document.getElementById('spin');
+spin.addEventListener('click', () => { controls.autoRotate = !controls.autoRotate; spin.setAttribute('aria-pressed', controls.autoRotate); });
+controls.addEventListener('start', () => { flight = null; });
+
+let SW = 1, SH = 1;
+function resize() {
+  SW = Math.max(1, stage.clientWidth); SH = Math.max(1, stage.clientHeight);
+  renderer.setSize(SW, SH, false);
+  camera.aspect = SW / SH;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+camera.position.copy(HOME).add(new THREE.Vector3(...CAMS.iso).normalize().multiplyScalar(homeDistance()));
+
+// ---------- frame loop ----------
+const tmp = new THREE.Vector3();
+function place(el, world, clamp = false) {
+  tmp.copy(world).project(camera);
+  let x = (tmp.x + 1) / 2 * SW, y = (1 - tmp.y) / 2 * SH;
+  if (clamp) {
+    const w = el.offsetWidth / 2 + 30, h = el.offsetHeight / 2 + 30;
+    x = Math.min(Math.max(x, w), SW - w); y = Math.min(Math.max(y, h), SH - h);
+  }
+  el.style.display = tmp.z < 1 && (clamp || (Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1)) ? '' : 'none';
+  el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+}
+// Project every pin, then push apart any that sit on top of each other.
+const spots = [];
+function placePins() {
+  pins.forEach((p, i) => {
+    tmp.copy(p.at).add(groupOffset(p.g.id)).project(camera);
+    spots[i] = { x: (tmp.x + 1) / 2 * SW, y: (1 - tmp.y) / 2 * SH, vis: tmp.z < 1 };
+  });
+  for (let it = 0; it < 4; it++) for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) {
+    const a = spots[i], b = spots[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+    if (d < 30) { const k = (30 - d) / 2 / d; a.x -= dx * k; a.y -= dy * k; b.x += dx * k; b.y += dy * k; }
+  }
+  pins.forEach((p, i) => {
+    const s = spots[i];
+    p.el.style.display = s.vis && s.x > -20 && s.x < SW + 20 && s.y > -20 && s.y < SH + 20 ? '' : 'none';
+    p.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-12px, -12px)`;
+  });
+}
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (flight) {
+    const t = Math.min(1, (now - flight.t0) / flight.ms), k = ease(t);
+    controls.target.lerpVectors(flight.a[0], flight.b[0], k);
+    camera.position.lerpVectors(flight.a[1], flight.b[1], k);
+    if (t >= 1) flight = null;
+  }
+  if (explodeNow !== explodeGoal) {
+    const gap = explodeGoal - explodeNow;
+    explodeNow = Math.abs(gap) < 0.001 || reduced ? explodeGoal : explodeNow + gap * (1 - Math.exp(-dt / 0.22));
+    slider.value = explodeNow;
+  }
+  for (const n of nodes) n.mesh.position.copy(n.explode).multiplyScalar(explodeNow);
+  controls.update();
+  if (coverage.lidar.userData.sweep && !reduced) coverage.lidar.userData.sweep.rotation.z = (now / 2400 % 1) * Math.PI * 2;
+  placePins();
+  for (const g of Object.values(coverage)) {
+    if (!g.userData.el) continue;
+    g.userData.el.style.display = g.visible && !selected ? "" : "none";
+    if (g.visible && !selected) place(g.userData.el, g.userData.label.at, true);
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+// ---------- load ----------
+const bar = document.getElementById('bar');
+bar.style.width = '30%';
+setTimeout(() => {
+  const buf = decode(GLB);
+  bar.style.width = '70%';
+  new GLTFLoader().parse(buf, '', gltf => {
+    build(gltf);
+    buildCoverage();
+    bar.style.width = '100%';
+    const load = document.getElementById('loading');
+    load.style.opacity = 0;
+    setTimeout(() => load.remove(), 500);
+    if (!reduced) { explodeNow = 0.55; explodeGoal = 0; }
+    requestAnimationFrame(frame);
+  }, err => { document.querySelector('#loading div').textContent = 'The model could not load: ' + err.message; });
+}, 30);
+</script>
+</body>
+</html>
