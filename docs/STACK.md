@@ -1,8 +1,13 @@
 Locked stack (please install exactly these):
-- OS: Ubuntu 24.04
+- OS: Ubuntu 24.04 (Jetson: JetPack 7.2, installed with NVIDIA's unified ISO)
 - ROS 2: Jazzy
-- Simulator: Gazebo Harmonic
-- PX4: v1.17.0 (release tag, NOT main)
+- Simulator: Gazebo Harmonic (laptops only)
+- PX4: v1.17.0 (release tag, NOT main). Flight controller flashed with v1.17.0 for MicoAir743 V2, not MicoAir's own firmware
 - px4_msgs: release/1.17
 - Micro XRCE-DDS Agent: v2.4.3
 - ROS middleware: Fast DDS (default)
+- SLAM: ros-jazzy-rtabmap-ros (apt)
+- OAK-D Lite driver: depthai-ros for Jazzy (version TBD, P3)
+- D500 lidar driver: LDROBOT's ROS 2 driver for the STL-19P (version TBD, P3)
+- MAVLink over Wi-Fi: mavlink-router (Jetson only)
+- SLAM: ros-jazzy-rtabmap-ros (apt; last layer of the dev container's Dockerfile)
